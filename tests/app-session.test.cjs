@@ -178,7 +178,7 @@ function makeStorage(workspace) {
   };
 }
 
-function session({ storage = makeStorage(), hash = '#dashboard', unavailable = false } = {}) {
+function session({ storage = makeStorage(), hash = '#dashboard', unavailable = false, locks } = {}) {
   const dom = simulatedDOM(), timers = new Map(), events = {}, blobs = new Map();
   let clock = 0, timerId = 0, currentHash = hash, blobId = 0;
   const setTimeout = (callback, delay = 0) => { const id = ++timerId; timers.set(id, { callback, at: clock + delay }); return id; };
@@ -198,6 +198,7 @@ function session({ storage = makeStorage(), hash = '#dashboard', unavailable = f
   }
   const context = {
     document: dom.document, console, URL: TestURL, Blob,
+    navigator: { locks },
     setTimeout, clearTimeout: id => timers.delete(id),
     CSS: { escape: value => String(value).replace(/[^\w-]/g, character => '\\' + character) },
     FormData: class {
@@ -206,6 +207,7 @@ function session({ storage = makeStorage(), hash = '#dashboard', unavailable = f
     },
     history: { replaceState(_, __, value) { currentHash = value; } },
     location: {
+      protocol: 'file:',
       get hash() { return currentHash; },
       set hash(value) { const next = value.startsWith('#') ? value : '#' + value; if (next !== currentHash) { currentHash = next; setTimeout(() => (events.hashchange || []).forEach(listener => listener()), 0); } }
     },
@@ -217,7 +219,7 @@ function session({ storage = makeStorage(), hash = '#dashboard', unavailable = f
   Object.defineProperty(context, 'localStorage', { get() { if (unavailable) throw Object.assign(new Error('Storage unavailable'), { name: 'SecurityError' }); return storage; } });
   context.window = context;
   vm.createContext(context);
-  for (const file of ['rules-data.js', 'core.js', 'guided-flow.js', 'quri-sprite.js', 'app.js']) {
+  for (const file of ['rules-data.js', 'core.js', 'guided-flow.js', 'quri-sprite.js', 'session-lock.js', 'app.js']) {
     dom.document.currentScript = { src: 'file:///simulated-checklist/js/' + file };
     vm.runInContext(fs.readFileSync(path.join(root, 'js', file), 'utf8'), context, { filename: file });
   }
@@ -229,6 +231,7 @@ function session({ storage = makeStorage(), hash = '#dashboard', unavailable = f
   function el(selector) { const element = dom.document.querySelector(selector); assert.ok(element, 'Missing simulated DOM element: ' + selector); return element; }
   return {
     ...dom, storage, context, blobs, advance, settle, el,
+    emit(type, event = {}) { (events[type] || []).forEach(listener => listener(event)); },
     workspace() { return JSON.parse(storage.map.get(C.STORAGE_KEY)); },
     async click(selector) { const element = el(selector); assert.equal(element.disabled, false, 'Cannot activate disabled button'); dom.dispatch('click', element); await settle(); },
     async input(selector, value, eventType = 'input') { const element = el(selector); if (element.type === 'checkbox') element.checked = value; else element.value = value; dom.dispatch(eventType, element); await settle(); },
@@ -537,4 +540,198 @@ test('simulated DOM: 저장 실패는 성공으로 표시하지 않으며 기존
   const backup = await app.backup();
   assert.equal(backup.workspace.cases[0].responses['PREP-01'].memo, '저장 실패 중에도 남긴 합성 사유');
   assert.equal(storage.map.get(C.STORAGE_KEY), original);
+});
+
+// Native lock semantics shared by two app instances: reservation precedes the
+// callback and lasts until its returned promise settles. All requests here are
+// ifAvailable, so another owner produces an immediate read-only result.
+function sharedLocks() {
+  const held = new Map();
+  return {
+    held,
+    request(name, options, callback) {
+      assert.equal(options.ifAvailable, true);
+      return Promise.resolve().then(async () => {
+        if (held.has(name)) return callback(null);
+        const lease = { name, mode: 'exclusive' };
+        held.set(name, lease);
+        try { return await callback(lease); }
+        finally { if (held.get(name) === lease) held.delete(name); }
+      });
+    }
+  };
+}
+
+test('simulated DOM: 외부 저장 변경은 열린 기본정보 초안을 보존하고 덮어쓰기를 막는다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0], storage = makeStorage(workspace);
+  const app = session({ storage, hash: '#case/' + c.id });
+  await app.click('[data-action="edit-case"]');
+  await app.input('#form-title', '이 탭에 작성 중인 합성 명칭');
+  const incoming = structuredClone(workspace);
+  incoming.revision++;
+  incoming.cases[0].title = '다른 창에서 저장한 합성 명칭';
+  const raw = JSON.stringify(incoming);
+  storage.setItem(C.STORAGE_KEY, raw);
+  app.emit('storage', { key: C.STORAGE_KEY, newValue: raw, storageArea: storage });
+  await app.settle();
+  assert.equal(app.el('#form-title').value, '이 탭에 작성 중인 합성 명칭');
+  assert.equal(app.el('#form-title').disabled, true);
+  assert.equal(app.el('[data-action="save-case-form"]').disabled, true);
+  assert.match(app.el('#storage-banner').textContent, /바뀌|충돌/);
+  await app.submit('#case-form');
+  assert.equal(storage.getItem(C.STORAGE_KEY), raw);
+  assert.equal(app.el('#app-dialog').open, true);
+});
+
+test('simulated DOM: 다른 저장소의 삭제 이벤트는 현재 작업을 잠그지 않는다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0], storage = makeStorage(workspace);
+  const app = session({ storage, hash: '#case/' + c.id });
+  app.emit('storage', { key: null, newValue: null, storageArea: makeStorage() });
+  await app.settle();
+  assert.equal(app.el('#storage-banner').hidden, true);
+  assert.equal(app.el('[data-action="edit-case"]').disabled, false);
+});
+
+for (const dirty of [false, true]) {
+  test('simulated DOM: 저장소 전체 삭제 후 ' + (dirty ? '미저장 입력' : '기존 저장본') + '을 백업으로 복구할 수 있다', async () => {
+    const workspace = legacyWorkspace(), c = workspace.cases[0], storage = makeStorage(workspace);
+    const app = session({ storage, hash: '#case/' + c.id });
+    if (dirty) {
+      await app.click('[data-action="item-status"][data-status="na"]');
+      await app.input('[data-response-field="memo"]', '삭제 직전 아직 저장하지 않은 합성 사유');
+    }
+    storage.map.clear();
+    app.emit('storage', { key: null, newValue: null, storageArea: storage });
+    await app.settle();
+    app.advance(500); await app.settle();
+    assert.equal(storage.getItem(C.STORAGE_KEY), null, '삭제된 저장소를 자동으로 다시 만들지 않는다');
+    assert.match(app.el('#storage-banner').textContent, /삭제/);
+    assert.doesNotMatch(app.el('#save-state').textContent, /^이 브라우저에 저장됨$/);
+    assert.equal(app.el('[data-action="edit-case"]').disabled, true);
+    const backup = await app.backup();
+    assert.equal(backup.workspace.cases[0].applicationNo, c.applicationNo);
+    if (dirty) assert.equal(backup.workspace.cases[0].responses['PREP-01'].memo, '삭제 직전 아직 저장하지 않은 합성 사유');
+    assert.equal(storage.getItem(C.STORAGE_KEY), null);
+    let warned = false;
+    app.emit('beforeunload', { preventDefault() { warned = true; } });
+    assert.equal(warned, true, '다운로드 완료를 알 수 없으므로 메모리에만 남은 기록의 닫기에는 경고한다');
+  });
+}
+
+test('simulated DOM: 보관 확인 중 외부 저장이 변경되면 성공을 알리거나 기록을 덮어쓰지 않는다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0], storage = makeStorage(workspace);
+  const app = session({ storage, hash: '#case/' + c.id });
+  await app.click('[data-action="case-menu"]');
+  await app.click('[data-action="archive"]');
+  const incoming = structuredClone(workspace);
+  incoming.revision++;
+  incoming.cases[0].notes = '다른 창의 합성 변경';
+  const raw = JSON.stringify(incoming);
+  storage.setItem(C.STORAGE_KEY, raw);
+  app.emit('storage', { key: C.STORAGE_KEY, newValue: raw, storageArea: storage });
+  await app.settle();
+  await app.click('[data-action="confirm-yes"]');
+  assert.equal(storage.getItem(C.STORAGE_KEY), raw);
+  assert.equal(app.workspace().cases[0].archived, false);
+  assert.doesNotMatch(app.el('#toast').textContent, /보관함으로 이동했습니다/);
+  assert.match(app.el('#storage-banner').textContent, /바뀌|충돌/);
+});
+
+test('simulated DOM: 편집 탭 종료 후 읽기 전용 탭은 최신 저장본을 읽고 편집권을 넘겨받는다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0];
+  const storage = makeStorage(workspace), locks = sharedLocks();
+  const owner = session({ storage, locks, hash: '#case/' + c.id });
+  await owner.settle();
+  const viewer = session({ storage, locks, hash: '#case/' + c.id });
+  await viewer.settle();
+  assert.equal(owner.el('[data-action="edit-case"]').disabled, false);
+  assert.equal(viewer.el('[data-action="edit-case"]').disabled, true);
+  assert.match(viewer.el('#save-state').textContent, /읽기 전용/);
+  const before = storage.getItem(C.STORAGE_KEY);
+  viewer.dispatch('click', viewer.el('[data-action="item-status"][data-status="na"]'));
+  await viewer.settle();
+  assert.equal(storage.getItem(C.STORAGE_KEY), before);
+  await owner.click('[data-action="item-status"][data-status="na"]');
+  await owner.input('[data-response-field="memo"]', '이전 편집 탭의 최신 합성 사유');
+  owner.emit('pagehide');
+  await owner.settle();
+  await viewer.click('[data-action="retry-writer"]');
+  assert.equal(viewer.el('[data-action="edit-case"]').disabled, false);
+  assert.equal(viewer.el('[data-response-field="memo"]').value, '이전 편집 탭의 최신 합성 사유');
+  await viewer.input('[data-response-field="memo"]', '편집권을 받은 탭의 합성 사유');
+  viewer.advance(350); await viewer.settle();
+  assert.equal(viewer.workspace().cases[0].responses['PREP-01'].memo, '편집권을 받은 탭의 합성 사유');
+  viewer.emit('pagehide'); await viewer.settle();
+  assert.equal(locks.held.size, 0);
+});
+
+test('simulated DOM: 읽기 전용 탭은 보기 방식과 필터를 바꿔도 입력란이 잠겨 있다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0];
+  c.responses['PREP-01'] = { ...C.blankResponse(), status: 'na', memo: '합성 해당없음 사유' };
+  const storage = makeStorage(workspace), locks = sharedLocks();
+  const owner = session({ storage, locks }); await owner.settle();
+  const viewer = session({ storage, locks, hash: '#case/' + c.id }); await viewer.settle();
+  await viewer.click('[data-action="view-mode"]');
+  assert.ok(viewer.document.querySelectorAll('[data-action="item-status"]').every(el => el.disabled));
+  assert.ok(viewer.document.querySelectorAll('[data-response-field]').every(el => el.disabled));
+  await viewer.click('[data-action="item-filter"][data-filter="all"]');
+  assert.ok(viewer.document.querySelectorAll('[data-action="item-status"]').every(el => el.disabled));
+  assert.ok(viewer.document.querySelectorAll('[data-response-field]').every(el => el.disabled));
+  owner.emit('pagehide'); viewer.emit('pagehide');
+  await owner.settle(); await viewer.settle();
+});
+
+test('simulated DOM: 페이지 복귀로 편집권을 다시 얻으면 열린 기본정보 초안도 다시 편집할 수 있다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0];
+  const storage = makeStorage(workspace), locks = sharedLocks();
+  const app = session({ storage, locks, hash: '#case/' + c.id }); await app.settle();
+  await app.click('[data-action="edit-case"]');
+  await app.input('#form-title', '페이지 복귀 후에도 유지할 합성 초안');
+  app.emit('pagehide'); await app.settle();
+  assert.equal(app.el('#form-title').disabled, true);
+  app.emit('pageshow', { persisted: true }); await app.settle();
+  assert.equal(app.el('#form-title').value, '페이지 복귀 후에도 유지할 합성 초안');
+  assert.equal(app.el('#form-title').disabled, false);
+  assert.equal(app.el('[data-action="save-case-form"]').disabled, false);
+  await app.click('[data-action="save-case-form"]');
+  assert.equal(app.workspace().cases[0].title, '페이지 복귀 후에도 유지할 합성 초안');
+  app.emit('pagehide'); await app.settle();
+});
+
+test('simulated DOM: 백업 교체 확인 중 편집권을 잃으면 읽기 전용 탭에서 직접 저장할 수 없다', async () => {
+  const workspace = legacyWorkspace(), storage = makeStorage(workspace), locks = sharedLocks();
+  const owner = session({ storage, locks, hash: '#backup' }); await owner.settle();
+  const incoming = legacyWorkspace({ applicationNo: '1020260009999', title: '가져올 합성 심사건' });
+  const contents = C.encodeBackup(incoming);
+  const file = owner.el('#backup-file');
+  file.files = [{ name: 'synthetic-replacement.json', size: Buffer.byteLength(contents), text: async () => contents }];
+  owner.dispatch('change', file); await owner.settle();
+  await owner.click('[data-action="import-replace"]');
+  assert.match(owner.el('#dialog-title').textContent, /교체/);
+  owner.emit('pagehide'); await owner.settle();
+  const newOwner = session({ storage, locks }); await newOwner.settle();
+  owner.emit('pageshow', { persisted: true }); await owner.settle();
+  assert.match(owner.el('#save-state').textContent, /읽기 전용/);
+  const before = storage.getItem(C.STORAGE_KEY);
+  await owner.click('[data-action="confirm-yes"]');
+  assert.equal(storage.getItem(C.STORAGE_KEY), before);
+  assert.equal(owner.workspace().cases[0].applicationNo, workspace.cases[0].applicationNo);
+  assert.doesNotMatch(owner.el('#toast').textContent, /전체 작업을 복구했습니다/);
+  owner.emit('pagehide'); newOwner.emit('pagehide');
+  await owner.settle(); await newOwner.settle();
+});
+
+test('simulated DOM: 체크 입력 직후 추가 정보를 열어도 자신의 지연 저장을 충돌로 오인하지 않는다', async () => {
+  const workspace = legacyWorkspace(), c = workspace.cases[0], storage = makeStorage(workspace);
+  const app = session({ storage, hash: '#case/' + c.id });
+  await app.click('[data-action="item-status"][data-status="na"]');
+  await app.input('[data-response-field="memo"]', '추가 정보 열기 직전의 합성 사유');
+  await app.click('[data-action="edit-case"]');
+  app.advance(350); await app.settle();
+  await app.input('#form-title', '같은 탭에서 바꾼 합성 명칭');
+  await app.click('[data-action="save-case-form"]');
+  assert.equal(app.workspace().cases[0].title, '같은 탭에서 바꾼 합성 명칭');
+  assert.equal(app.workspace().cases[0].responses['PREP-01'].memo, '추가 정보 열기 직전의 합성 사유');
+  assert.equal(app.el('#app-dialog').open, false);
+  assert.equal(app.el('#storage-banner').hidden, true);
 });

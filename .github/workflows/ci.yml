@@ -1,0 +1,57 @@
+name: Checklist verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checklist-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the reviewed code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Verify static publication constraints
+        run: node scripts/check-site.cjs
+      - name: Install browser test tools outside the site
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/quri-browser" --no-save --no-package-lock --ignore-scripts playwright@1.62.1
+          node "$RUNNER_TEMP/quri-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          node <<'JS'
+          const fs = require('node:fs');
+          const modules = process.env.RUNNER_TEMP + '/quri-browser/node_modules';
+          const { chromium } = require(modules + '/playwright');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'NODE_PATH=' + modules + '\nQURI_CHROMIUM=' + chromium.executablePath() + '\n');
+          JS
+      - name: Verify logic, offline files, and hosted browser behavior
+        shell: bash
+        env:
+          QURI_BROWSER_TEST: '1'
+          QURI_SCREENSHOT_DIR: ${{ runner.temp }}/quri-verification/screenshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/quri-verification"
+          node --test --test-concurrency=1 --test-reporter=tap tests/*.test.cjs | tee "$RUNNER_TEMP/quri-verification/tests.tap"
+      - name: Keep synthetic test screenshots and results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: checklist-verification-${{ github.sha }}
+          path: ${{ runner.temp }}/quri-verification/
+          retention-days: 14
+          if-no-files-found: warn

@@ -325,7 +325,7 @@
     if (error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
       return '브라우저 저장 공간이 부족합니다. 현재 데이터를 백업 파일로 저장한 뒤 공간을 확보해 주세요.';
     }
-    if (error && error.name === 'SecurityError') return '이 브라우저에서 파일의 자동 저장을 허용하지 않습니다. 백업 파일 저장 기능을 사용해 주세요.';
+    if (error && error.name === 'SecurityError') return '이 브라우저에서 자동 저장을 허용하지 않습니다. 백업 파일 저장 기능을 사용해 주세요.';
     return error && error.message ? error.message : '브라우저 저장소에 접근할 수 없습니다. 현재 데이터를 백업 파일로 저장해 주세요.';
   }
   function createStorage(storage) {
@@ -351,6 +351,11 @@
       next.updatedAt = now();
       var serialized = JSON.stringify(next);
       if (serialized.length > MAX_BACKUP_LENGTH) fail('작업 데이터가 최대 저장 크기를 초과했습니다. 일부 출원을 별도로 백업해 주세요.');
+      // A second comparison detects changes made during validation. Cooperating
+      // browser tabs also hold a Web Lock; this comparison alone is not atomic.
+      if (read() !== previousRaw) {
+        return { ok: false, workspace: workspace, error: '저장을 준비하는 동안 다른 창에서 데이터가 변경되었습니다. 현재 작업을 백업한 뒤 최신 저장 내용을 확인해 주세요.', conflict: true };
+      }
       storage.setItem(STORAGE_KEY, serialized);
       var after = read();
       if (after !== serialized) {
