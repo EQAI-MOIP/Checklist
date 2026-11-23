@@ -8,10 +8,12 @@
 - Node.js 24 회귀 검사: 77개 통과, 0개 실패. 실제 브라우저 검사 2개는 기본 실행에서 명시적으로 건너뜁니다.
 - 저장 보호 회귀: 편집 탭 소유권, 소유권 이전·해제·복귀, 열린 추가 정보 초안 충돌, 저장소 삭제, 삭제 후 백업, 확인 창 대기 중 외부 변경·편집권 상실, 자기 지연 저장과 추가 정보 수정, 검증 중 원문 변경을 검사합니다.
 - 로컬 Chromium: 실행 환경이 OS 소켓 생성을 허용하지 않아 브라우저 시작 전에 중단되었습니다. 이 제한을 우회하지 않았습니다.
-- 실제 Chromium의 file://·HTTP 검증: GitHub Actions의 `Checklist verification`에서 실행하도록 구성했습니다. 이 단락은 완료 결과 확인 후 갱신합니다.
+- 실제 Chromium의 file://·HTTP 검증: [GitHub Actions 실행 45169262312](https://github.com/EQAI-MOIP/Checklist/actions/runs/45169262312)에서 **88개 통과, 실패 0, 건너뜀 0**을 확인했습니다. 실행 커밋은 `fd971f273eaaa9df32abecfdb071e7a96da97525`입니다.
+- 실제 브라우저에서 폴더 오프라인 실행, 네 유형, 필수 근거·사유·보완 조건, 기존 백업 복원, 완료·재개·보관, WebP·모션 감소, 1440·1024·390px 화면을 검사했습니다. 웹 실행은 /Checklist/ 하위 경로의 저장·새로고침·JSON 다운로드, 서로 다른 브라우저 프로필, 실제 CSP 전송 차단, 두 탭 편집권 이전까지 통과했습니다.
+- CI 합성 화면 중 대시보드, 체크리스트 데스크톱·모바일, 저장 안내 화면을 직접 열어 글씨·버튼·배치를 확인했습니다.
 - Windows 업무 PC와 기관 관리 브라우저의 정책은 별도 확인 대상입니다.
 
-`tests/validation-output.txt`와 `tests/validation-results.json`은 로컬 Node 실행 결과를 보관합니다. 실제 브라우저 검증 로그와 합성 화면은 GitHub Actions 실행의 `checklist-verification-…` 아티팩트에 보관하도록 구성했습니다.
+`tests/validation-output.txt`와 `tests/validation-results.json`은 로컬 Node 실행 결과를 보관합니다. 실제 브라우저 TAP 결과는 `tests/validation-ci.tap`에도 보관했습니다. 합성 화면 PNG 14개는 위 실행의 `checklist-verification-fd971f273eaaa9df32abecfdb071e7a96da97525` 아티팩트에서 확인할 수 있습니다. 아티팩트 보관 기간은 14일입니다.
 
 ## 검증 범위의 구분
 

@@ -1,0 +1,541 @@
+TAP version 13
+# Subtest: simulated DOM: 실제 classic scripts가 저장소와 대시보드를 초기화한다
+ok 1 - simulated DOM: 실제 classic scripts가 저장소와 대시보드를 초기화한다
+  ---
+  duration_ms: 21.658193
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 출원번호만 제출하고 문서를 선택하며 중복 제출·동일 번호는 기존 건을 재개한다
+ok 2 - simulated DOM: 출원번호만 제출하고 문서를 선택하며 중복 제출·동일 번호는 기존 건을 재개한다
+  ---
+  duration_ms: 262.715896
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 필수 근거 없는 다음 이동은 막고 나중에 확인·재개 위치를 보존한다
+ok 3 - simulated DOM: 필수 근거 없는 다음 이동은 막고 나중에 확인·재개 위치를 보존한다
+  ---
+  duration_ms: 88.086284
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 문서 선택 전 새로고침해도 미선택 화면을 재개하고 선택 후 해당 유형을 저장한다
+ok 4 - simulated DOM: 문서 선택 전 새로고침해도 미선택 화면을 재개하고 선택 후 해당 유형을 저장한다
+  ---
+  duration_ms: 19.457497
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 재개 위치가 없는 백업에서도 문서 미선택 상태를 복원하고 확인한 유형은 유지한다
+ok 5 - simulated DOM: 재개 위치가 없는 백업에서도 문서 미선택 상태를 복원하고 확인한 유형은 유지한다
+  ---
+  duration_ms: 27.763716
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 본문 바로가기는 출원 경로와 점검 위치를 유지하면서 본문에 초점을 둔다
+ok 6 - simulated DOM: 본문 바로가기는 출원 경로와 점검 위치를 유지하면서 본문에 초점을 둔다
+  ---
+  duration_ms: 24.851746
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 근거와 보완 입력에 맞춰 항목·청구항 표시와 접근성 상태를 갱신한다
+ok 7 - simulated DOM: 근거와 보완 입력에 맞춰 항목·청구항 표시와 접근성 상태를 갱신한다
+  ---
+  duration_ms: 68.772034
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 전체 애니메이션 정지는 항목 이동 후 유지되고 같은 화면에서 다시 재생된다
+ok 8 - simulated DOM: 전체 애니메이션 정지는 항목 이동 후 유지되고 같은 화면에서 다시 재생된다
+  ---
+  duration_ms: 23.596665
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 해당없음 사유와 보완 네 요건을 개별 표시하고 모두 충족해야 이동한다
+ok 9 - simulated DOM: 해당없음 사유와 보완 네 요건을 개별 표시하고 모두 충족해야 이동한다
+  ---
+  duration_ms: 57.66282
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 전체 보기에서 수정한 항목에 큐리 안내와 한 항목 보기 위치가 함께 맞춰진다
+ok 10 - simulated DOM: 전체 보기에서 수정한 항목에 큐리 안내와 한 항목 보기 위치가 함께 맞춰진다
+  ---
+  duration_ms: 38.501529
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 기존 이름·숨겨진 기록은 추가 정보 수정과 유형 변경 후에도 유지한다
+ok 11 - simulated DOM: 기존 이름·숨겨진 기록은 추가 정보 수정과 유형 변경 후에도 유지한다
+  ---
+  duration_ms: 19.604047
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 마지막 관점 이후 청구항을 이어 확인하고 최종 확인 체크 후에만 완료한다
+ok 12 - simulated DOM: 마지막 관점 이후 청구항을 이어 확인하고 최종 확인 체크 후에만 완료한다
+  ---
+  duration_ms: 46.962562
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 완료·보관 건은 최종 확인으로 열리고 결과 입력을 잠근다
+ok 13 - simulated DOM: 완료·보관 건은 최종 확인으로 열리고 결과 입력을 잠근다
+  ---
+  duration_ms: 26.727654
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 자동 저장 불가 모드에서도 점검·이동·JSON 백업으로 기록을 보존한다
+ok 14 - simulated DOM: 자동 저장 불가 모드에서도 점검·이동·JSON 백업으로 기록을 보존한다
+  ---
+  duration_ms: 33.855377
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 저장 실패는 성공으로 표시하지 않으며 기존 저장본과 현재 작업 백업을 구분한다
+ok 15 - simulated DOM: 저장 실패는 성공으로 표시하지 않으며 기존 저장본과 현재 작업 백업을 구분한다
+  ---
+  duration_ms: 25.679755
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 외부 저장 변경은 열린 기본정보 초안을 보존하고 덮어쓰기를 막는다
+ok 16 - simulated DOM: 외부 저장 변경은 열린 기본정보 초안을 보존하고 덮어쓰기를 막는다
+  ---
+  duration_ms: 15.143805
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 다른 저장소의 삭제 이벤트는 현재 작업을 잠그지 않는다
+ok 17 - simulated DOM: 다른 저장소의 삭제 이벤트는 현재 작업을 잠그지 않는다
+  ---
+  duration_ms: 6.572286
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 저장소 전체 삭제 후 기존 저장본을 백업으로 복구할 수 있다
+ok 18 - simulated DOM: 저장소 전체 삭제 후 기존 저장본을 백업으로 복구할 수 있다
+  ---
+  duration_ms: 11.872474
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 저장소 전체 삭제 후 미저장 입력을 백업으로 복구할 수 있다
+ok 19 - simulated DOM: 저장소 전체 삭제 후 미저장 입력을 백업으로 복구할 수 있다
+  ---
+  duration_ms: 24.78782
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 보관 확인 중 외부 저장이 변경되면 성공을 알리거나 기록을 덮어쓰지 않는다
+ok 20 - simulated DOM: 보관 확인 중 외부 저장이 변경되면 성공을 알리거나 기록을 덮어쓰지 않는다
+  ---
+  duration_ms: 13.331754
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 편집 탭 종료 후 읽기 전용 탭은 최신 저장본을 읽고 편집권을 넘겨받는다
+ok 21 - simulated DOM: 편집 탭 종료 후 읽기 전용 탭은 최신 저장본을 읽고 편집권을 넘겨받는다
+  ---
+  duration_ms: 44.626522
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 읽기 전용 탭은 보기 방식과 필터를 바꿔도 입력란이 잠겨 있다
+ok 22 - simulated DOM: 읽기 전용 탭은 보기 방식과 필터를 바꿔도 입력란이 잠겨 있다
+  ---
+  duration_ms: 33.200259
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 페이지 복귀로 편집권을 다시 얻으면 열린 기본정보 초안도 다시 편집할 수 있다
+ok 23 - simulated DOM: 페이지 복귀로 편집권을 다시 얻으면 열린 기본정보 초안도 다시 편집할 수 있다
+  ---
+  duration_ms: 29.515015
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 백업 교체 확인 중 편집권을 잃으면 읽기 전용 탭에서 직접 저장할 수 없다
+ok 24 - simulated DOM: 백업 교체 확인 중 편집권을 잃으면 읽기 전용 탭에서 직접 저장할 수 없다
+  ---
+  duration_ms: 21.458172
+  type: 'test'
+  ...
+# Subtest: simulated DOM: 체크 입력 직후 추가 정보를 열어도 자신의 지연 저장을 충돌로 오인하지 않는다
+ok 25 - simulated DOM: 체크 입력 직후 추가 정보를 열어도 자신의 지연 저장을 충돌로 오인하지 않는다
+  ---
+  duration_ms: 28.269218
+  type: 'test'
+  ...
+# Subtest: offline guided flow in a real Chromium browser
+    # Subtest: file:// loads local WebP, number-only start and normalized duplicate resume
+    ok 1 - file:// loads local WebP, number-only start and normalized duplicate resume
+      ---
+      duration_ms: 608.67628
+      type: 'test'
+      ...
+    # Subtest: required evidence, NA reason and every issue requirement gate Next
+    ok 2 - required evidence, NA reason and every issue requirement gate Next
+      ---
+      duration_ms: 953.790838
+      type: 'test'
+      ...
+    # Subtest: defer preserves pending, cursor survives reload and missing item remains visible
+    ok 3 - defer preserves pending, cursor survives reload and missing item remains visible
+      ---
+      duration_ms: 540.323428
+      type: 'test'
+      ...
+    # Subtest: four explicit document types select their own applicable checklist
+    ok 4 - four explicit document types select their own applicable checklist
+      ---
+      duration_ms: 602.975062
+      type: 'test'
+      ...
+    # Subtest: legacy v1 import and optional metadata preserve hidden names and previous records
+    ok 5 - legacy v1 import and optional metadata preserve hidden names and previous records
+      ---
+      duration_ms: 693.613629
+      type: 'test'
+      ...
+    # Subtest: final acknowledgement, completion lock, reopen and archive remain usable
+    ok 6 - final acknowledgement, completion lock, reopen and archive remain usable
+      ---
+      duration_ms: 1104.361964
+      type: 'test'
+      ...
+    # Subtest: responsive layout, contextual animation and operating-system reduced motion
+    ok 7 - responsive layout, contextual animation and operating-system reduced motion
+      ---
+      duration_ms: 1395.0992
+      type: 'test'
+      ...
+    1..7
+ok 26 - offline guided flow in a real Chromium browser
+  ---
+  duration_ms: 6528.72499
+  type: 'test'
+  ...
+# Subtest: 실제 내장 카탈로그의 8관점·66항목·84코드와 모든 참조가 유효하다
+ok 27 - 실제 내장 카탈로그의 8관점·66항목·84코드와 모든 참조가 유효하다
+  ---
+  duration_ms: 1.59907
+  type: 'test'
+  ...
+# Subtest: 15xx 우수사례가 하자나 부적합으로 분류되지 않는다
+ok 28 - 15xx 우수사례가 하자나 부적합으로 분류되지 않는다
+  ---
+  duration_ms: 0.176155
+  type: 'test'
+  ...
+# Subtest: 네 점검 유형에서 미확인 기본값을 완료로 세지 않으며 예상 항목 수를 적용한다
+ok 29 - 네 점검 유형에서 미확인 기본값을 완료로 세지 않으며 예상 항목 수를 적용한다
+  ---
+  duration_ms: 4.652842
+  type: 'test'
+  ...
+# Subtest: 실제 전체 규칙에서 근거·사유·청구항이 모두 충족될 때만 완료 가능하다
+ok 30 - 실제 전체 규칙에서 근거·사유·청구항이 모두 충족될 때만 완료 가능하다
+  ---
+  duration_ms: 1.502214
+  type: 'test'
+  ...
+# Subtest: 유형 변경 후 숨겨진 기록은 백업 왕복에서 보존된다
+ok 31 - 유형 변경 후 숨겨진 기록은 백업 왕복에서 보존된다
+  ---
+  duration_ms: 0.970783
+  type: 'test'
+  ...
+# Subtest: 실행 HTML의 로컬 자원은 존재하며 서버·모듈·원격 자원을 요구하지 않는다
+ok 32 - 실행 HTML의 로컬 자원은 존재하며 서버·모듈·원격 자원을 요구하지 않는다
+  ---
+  duration_ms: 3.456018
+  type: 'test'
+  ...
+# Subtest: 원문 출처가 두 저장소의 고정 커밋과 함께 보존된다
+ok 33 - 원문 출처가 두 저장소의 고정 커밋과 함께 보존된다
+  ---
+  duration_ms: 0.240303
+  type: 'test'
+  ...
+# Subtest: 13자리 특허·실용신안 번호만 정규화하고 문자 혼입을 거부한다
+ok 34 - 13자리 특허·실용신안 번호만 정규화하고 문자 혼입을 거부한다
+  ---
+  duration_ms: 1.20777
+  type: 'test'
+  ...
+# Subtest: 새 출원은 미확인 상태로 시작하고 불가능한 날짜·청구항 수를 거부한다
+ok 35 - 새 출원은 미확인 상태로 시작하고 불가능한 날짜·청구항 수를 거부한다
+  ---
+  duration_ms: 4.505229
+  type: 'test'
+  ...
+# Subtest: 검토 유형에 해당하는 규칙만 집계하며 숨은 응답을 보존한다
+ok 36 - 검토 유형에 해당하는 규칙만 집계하며 숨은 응답을 보존한다
+  ---
+  duration_ms: 0.526644
+  type: 'test'
+  ...
+# Subtest: 미확인과 핵심항목 근거 누락은 완료를 막고 진척도를 부풀리지 않는다
+ok 37 - 미확인과 핵심항목 근거 누락은 완료를 막고 진척도를 부풀리지 않는다
+  ---
+  duration_ms: 0.228745
+  type: 'test'
+  ...
+# Subtest: 해당없음에는 사유가 필요하며 공백만 입력한 사유는 인정하지 않는다
+ok 38 - 해당없음에는 사유가 필요하며 공백만 입력한 사유는 인정하지 않는다
+  ---
+  duration_ms: 0.211439
+  type: 'test'
+  ...
+# Subtest: 보완필요는 근거·메모·처리 내용·보완 완료를 모두 충족해야 종료된다
+ok 39 - 보완필요는 근거·메모·처리 내용·보완 완료를 모두 충족해야 종료된다
+  ---
+  duration_ms: 0.207883
+  type: 'test'
+  ...
+# Subtest: 모든 체크항목과 개별 청구항을 마쳐야 전체 blockers가 비어 있다
+ok 40 - 모든 체크항목과 개별 청구항을 마쳐야 전체 blockers가 비어 있다
+  ---
+  duration_ms: 0.295626
+  type: 'test'
+  ...
+# Subtest: 청구항 보완 완료 표시가 있어도 보완 근거가 없으면 완료되지 않는다
+ok 41 - 청구항 보완 완료 표시가 있어도 보완 근거가 없으면 완료되지 않는다
+  ---
+  duration_ms: 0.215114
+  type: 'test'
+  ...
+# Subtest: 알 수 없는 상태를 미확인 완료로 간주하지 않는다
+ok 42 - 알 수 없는 상태를 미확인 완료로 간주하지 않는다
+  ---
+  duration_ms: 0.156346
+  type: 'test'
+  ...
+# Subtest: 한글·따옴표·줄바꿈 및 해결 이력은 백업 왕복에서 정확히 유지된다
+ok 43 - 한글·따옴표·줄바꿈 및 해결 이력은 백업 왕복에서 정확히 유지된다
+  ---
+  duration_ms: 1.32705
+  type: 'test'
+  ...
+# Subtest: 지원하지 않는 앱·데이터 버전·백업 버전을 조용히 초기화하지 않는다
+ok 44 - 지원하지 않는 앱·데이터 버전·백업 버전을 조용히 초기화하지 않는다
+  ---
+  duration_ms: 0.415576
+  type: 'test'
+  ...
+# Subtest: 위험 키·미지의 필드·잘못된 타입을 포함한 백업을 거부한다
+ok 45 - 위험 키·미지의 필드·잘못된 타입을 포함한 백업을 거부한다
+  ---
+  duration_ms: 0.439503
+  type: 'test'
+  ...
+# Subtest: 중복 출원·중복 ID·해결 표시의 잘못된 조합을 거부한다
+ok 46 - 중복 출원·중복 ID·해결 표시의 잘못된 조합을 거부한다
+  ---
+  duration_ms: 0.297819
+  type: 'test'
+  ...
+# Subtest: 응답 기본값을 채우되 원래 객체를 변경하지 않는다
+ok 47 - 응답 기본값을 채우되 원래 객체를 변경하지 않는다
+  ---
+  duration_ms: 0.164328
+  type: 'test'
+  ...
+# Subtest: 병합은 같은 출원번호를 덮어쓰지 않고 새로운 건만 추가한다
+ok 48 - 병합은 같은 출원번호를 덮어쓰지 않고 새로운 건만 추가한다
+  ---
+  duration_ms: 0.278549
+  type: 'test'
+  ...
+# Subtest: 정상 저장은 재읽기 검증과 버전 증가 후에만 성공한다
+ok 49 - 정상 저장은 재읽기 검증과 버전 증가 후에만 성공한다
+  ---
+  duration_ms: 0.368035
+  type: 'test'
+  ...
+# Subtest: 오래된 창의 저장 요청은 최신 저장본을 덮어쓰지 않는다
+ok 50 - 오래된 창의 저장 요청은 최신 저장본을 덮어쓰지 않는다
+  ---
+  duration_ms: 0.254874
+  type: 'test'
+  ...
+# Subtest: 저장소 할당량 오류는 성공으로 표시하지 않고 기존 데이터를 유지한다
+ok 51 - 저장소 할당량 오류는 성공으로 표시하지 않고 기존 데이터를 유지한다
+  ---
+  duration_ms: 0.282847
+  type: 'test'
+  ...
+# Subtest: 저장 준비 도중 달라진 원문을 발견하면 쓰기 전에 충돌을 알린다
+ok 52 - 저장 준비 도중 달라진 원문을 발견하면 쓰기 전에 충돌을 알린다
+  ---
+  duration_ms: 0.217868
+  type: 'test'
+  ...
+# Subtest: 손상된 저장 원문은 자동 초기화하거나 저장으로 덮어쓰지 않는다
+ok 53 - 손상된 저장 원문은 자동 초기화하거나 저장으로 덮어쓰지 않는다
+  ---
+  duration_ms: 0.25211
+  type: 'test'
+  ...
+# Subtest: 읽기 불가 저장소와 저장 직후 변경도 확인된 성공으로 표시하지 않는다
+ok 54 - 읽기 불가 저장소와 저장 직후 변경도 확인된 성공으로 표시하지 않는다
+  ---
+  duration_ms: 0.208404
+  type: 'test'
+  ...
+# Subtest: CSV 출력은 따옴표·줄바꿈을 보존하며 수식 실행 시작문자를 무력화한다
+ok 55 - CSV 출력은 따옴표·줄바꿈을 보존하며 수식 실행 시작문자를 무력화한다
+  ---
+  duration_ms: 0.214363
+  type: 'test'
+  ...
+# Subtest: 네 유형의 안내 순서는 적용 기준의 순서를 유지하고 개별 청구항을 마지막에 둔다
+ok 56 - 네 유형의 안내 순서는 적용 기준의 순서를 유지하고 개별 청구항을 마지막에 둔다
+  ---
+  duration_ms: 6.566615
+  type: 'test'
+  ...
+# Subtest: 유효한 재개 위치는 완료 여부와 관계없이 유지하고 오래된 위치는 첫 유효 누락으로 이동한다
+ok 57 - 유효한 재개 위치는 완료 여부와 관계없이 유지하고 오래된 위치는 첫 유효 누락으로 이동한다
+  ---
+  duration_ms: 0.512212
+  type: 'test'
+  ...
+# Subtest: 유형 변경과 청구항 수 감소 후 적용되지 않는 재개 위치를 안전하게 건너뛴다
+ok 58 - 유형 변경과 청구항 수 감소 후 적용되지 않는 재개 위치를 안전하게 건너뛴다
+  ---
+  duration_ms: 0.660525
+  type: 'test'
+  ...
+# Subtest: 다음 미완료는 현재 뒤부터 찾고 마지막에서 처음으로 순환하며 현재 항목은 마지막에 확인한다
+ok 59 - 다음 미완료는 현재 뒤부터 찾고 마지막에서 처음으로 순환하며 현재 항목은 마지막에 확인한다
+  ---
+  duration_ms: 0.412241
+  type: 'test'
+  ...
+# Subtest: 일반 다음·이전은 관점과 청구항 경계를 이어 주며 양 끝에서는 순환하지 않는다
+ok 60 - 일반 다음·이전은 관점과 청구항 경계를 이어 주며 양 끝에서는 순환하지 않는다
+  ---
+  duration_ms: 0.557961
+  type: 'test'
+  ...
+# Subtest: 필수 근거·해당없음 사유·보완 기록 여부는 전달된 canonical blockers를 그대로 따른다
+ok 61 - 필수 근거·해당없음 사유·보완 기록 여부는 전달된 canonical blockers를 그대로 따른다
+  ---
+  duration_ms: 0.739004
+  type: 'test'
+  ...
+# Subtest: 안내 위치 계산은 숨겨진 응답·청구항 기록·기준·진행 결과를 변경하지 않는다
+ok 62 - 안내 위치 계산은 숨겨진 응답·청구항 기록·기준·진행 결과를 변경하지 않는다
+  ---
+  duration_ms: 6.329058
+  type: 'test'
+  ...
+# Subtest: 빈 카탈로그 및 선택적 진행정보에서도 안내 경계를 안전하게 처리한다
+ok 63 - 빈 카탈로그 및 선택적 진행정보에서도 안내 경계를 안전하게 처리한다
+  ---
+  duration_ms: 0.244148
+  type: 'test'
+  ...
+# Subtest: file:// classic script 형식으로 로드하며 브라우저 전역 API를 제공한다
+ok 64 - file:// classic script 형식으로 로드하며 브라우저 전역 API를 제공한다
+  ---
+  duration_ms: 1.265727
+  type: 'test'
+  ...
+# Subtest: public static app: relative paths and restrictive browser policy
+ok 65 - public static app: relative paths and restrictive browser policy
+  ---
+  duration_ms: 5.179796
+  type: 'test'
+  ...
+# Subtest: GitHub Pages-style /Checklist/ hosting preserves local records without sending inputs
+    # Subtest: hosted checklist fits desktop/mobile and keyboard navigation focuses the next question
+    ok 1 - hosted checklist fits desktop/mobile and keyboard navigation focuses the next question
+      ---
+      duration_ms: 310.348439
+      type: 'test'
+      ...
+    # Subtest: a second tab is read-only, then resumes the newest records after the owner closes
+    ok 2 - a second tab is read-only, then resumes the newest records after the owner closes
+      ---
+      duration_ms: 1302.747109
+      type: 'test'
+      ...
+    1..2
+ok 66 - GitHub Pages-style /Checklist/ hosting preserves local records without sending inputs
+  ---
+  duration_ms: 3464.006121
+  type: 'test'
+  ...
+# Subtest: unsupported browsers expose a distinct advisory state without requesting a lock
+ok 67 - unsupported browsers expose a distinct advisory state without requesting a lock
+  ---
+  duration_ms: 1.557407
+  type: 'test'
+  ...
+# Subtest: one owner holds the lease; a second window becomes viewer without waiting
+ok 68 - one owner holds the lease; a second window becomes viewer without waiting
+  ---
+  duration_ms: 0.887087
+  type: 'test'
+  ...
+# Subtest: repeated starts/retries reuse the pending attempt and never stack owner leases
+ok 69 - repeated starts/retries reuse the pending attempt and never stack owner leases
+  ---
+  duration_ms: 0.314854
+  type: 'test'
+  ...
+# Subtest: release before the request starts cancels it and settles the pending decision
+ok 70 - release before the request starts cancels it and settles the pending decision
+  ---
+  duration_ms: 0.181354
+  type: 'test'
+  ...
+# Subtest: a late grant after release is dropped; immediate retry waits for its release
+ok 71 - a late grant after release is dropped; immediate retry waits for its release
+  ---
+  duration_ms: 3.572834
+  type: 'test'
+  ...
+# Subtest: owner can release and reacquire immediately as during pagehide/pageshow
+ok 72 - owner can release and reacquire immediately as during pagehide/pageshow
+  ---
+  duration_ms: 0.238419
+  type: 'test'
+  ...
+# Subtest: request rejection stays read-only and retry can recover
+ok 73 - request rejection stays read-only and retry can recover
+  ---
+  duration_ms: 0.365591
+  type: 'test'
+  ...
+# Subtest: a synchronous API failure becomes error and does not strand the decision
+ok 74 - a synchronous API failure becomes error and does not strand the decision
+  ---
+  duration_ms: 0.25167
+  type: 'test'
+  ...
+# Subtest: a rejected stale request cannot replace the state of a newer retry
+ok 75 - a rejected stale request cannot replace the state of a newer retry
+  ---
+  duration_ms: 0.252761
+  type: 'test'
+  ...
+# Subtest: an observer throwing or releasing synchronously cannot leak the lease
+ok 76 - an observer throwing or releasing synchronously cannot leak the lease
+  ---
+  duration_ms: 1.250174
+  type: 'test'
+  ...
+# Subtest: retry immediately after viewer makes a new request
+ok 77 - retry immediately after viewer makes a new request
+  ---
+  duration_ms: 0.269526
+  type: 'test'
+  ...
+# Subtest: release from a pending-state observer safely cancels retry
+ok 78 - release from a pending-state observer safely cancels retry
+  ---
+  duration_ms: 0.192029
+  type: 'test'
+  ...
+# PASS: sprite frame sequence, contextual states and labels, pause across contexts, reduced motion, visibility, offscreen, reattach, six review poses, decorative accessibility, detached element cleanup.
+# Subtest: tests/sprite.test.cjs
+ok 8 - tests/sprite.test.cjs
+  ---
+  duration_ms: 31.370764
+  type: 'test'
+  ...
+1..79
+# tests 88
+# suites 0
+# pass 88
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 11474.812051

@@ -12,6 +12,26 @@
   },
   "static_publication_gate": "passed",
   "local_chromium": "blocked before launch: socket Operation not permitted",
-  "actual_browser_verification": "Pending GitHub Actions run; see docs/VALIDATION.md",
+  "actual_browser_verification": {
+    "status": "passed",
+    "run_id": 45169262312,
+    "url": "https://github.com/EQAI-MOIP/Checklist/actions/runs/45169262312",
+    "commit": "fd971f273eaaa9df32abecfdb071e7a96da97525",
+    "tests": 88,
+    "passed": 88,
+    "failed": 0,
+    "skipped": 0,
+    "browser": "Chromium installed by Playwright 1.62.1",
+    "artifact_id": 14816760490,
+    "screenshots": 14,
+    "visual_review": [
+      "hosted-dashboard",
+      "hosted-checklist",
+      "hosted-keyboard-checklist-390",
+      "hosted-privacy",
+      "guided-1440",
+      "guided-1024"
+    ]
+  },
   "private_data_used": false
 }
