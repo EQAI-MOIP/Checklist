@@ -1,18 +1,20 @@
-# 큐리 심사 체크 v1.1.0 구조와 유지보수
+# 큐리 심사 체크 v1.2.0 구조와 유지보수
 
 ## 실행 구조
 
-배포물은 정적 HTML, CSS, 일반 JavaScript와 로컬 WebP입니다. `index.html`을 `file://` 주소로 열어 실행합니다. npm 설치, 빌드, 웹 서버, 서비스 워커, 외부 API가 실행 전제에 포함되지 않습니다.
+배포물은 정적 HTML, CSS, 일반 JavaScript와 로컬 WebP입니다. GitHub Pages의 저장소 하위 경로에서 제공하거나 `index.html`을 `file://` 주소로 열어 실행합니다. npm 설치, 빌드, 웹 서버, 서비스 워커, 외부 API가 실행 전제에 포함되지 않습니다.
 
 | 파일 | 역할 |
 |---|---|
 | `index.html` | 앱 기본 구조, 내비게이션, 다이얼로그·백업 입력·인쇄 영역, CSP |
 | `css/app.css` | 공통 화면·반응형·인쇄·동작 줄이기 스타일 |
+| `css/public.css` | v1.2.0의 글자 크기·접근성·반응형·저장 안내 화면. 인쇄 CSS에는 영향 없음 |
 | `css/guided.css` | 번호 입력, 문서 선택, 한 항목 점검, 큐리 안내와 진행·누락 표시 스타일 |
 | `js/rules-data.js` | 8개 관점·66개 항목, 84개 코드 사전, 규칙 원문과 출처 데이터 |
 | `js/core.js` | 출원 데이터 모델, 입력 검증, 진행률·차단 조건, JSON 형식, 저장소·병합·CSV 처리 |
 | `js/guided-flow.js` | 적용 항목·청구항의 순서, 유효한 재개 위치, 이전·다음·미완료 이동을 계산하는 순수 함수 |
 | `js/quri-sprite.js` | 로컬 WebP의 실제 프레임 재생, 가시성·모션 제어 |
+| `js/session-lock.js` | Web Locks API 기반 단일 편집 탭. pending·owner·viewer·unsupported·error 상태 관리 |
 | `js/app.js` | 화면 렌더링, 해시 경로, 사용자의 편집·내보내기·복원·완료 흐름 |
 | `assets/` | 원본 WebP 3개, 프레임 메타데이터, 자산 출처 안내 |
 | `references/` | 고정 커밋에서 확보한 기준·규칙 사본. 앱 실행 코드로 불러오지 않음 |
@@ -21,11 +23,21 @@
 | `tests/app-session.test.cjs` | 모의 DOM에서 실제 UI 스크립트와 이벤트 흐름을 실행하는 회귀 검사. 화면 렌더링 검사가 아님 |
 | `tests/browser-flow.test.cjs` | 개발용 선택적 Playwright 검사. 실제 브라우저 실행이 허용되는 환경에서만 명시적으로 실행 |
 
-다섯 JavaScript 파일은 `defer`가 붙은 classic script로 순서대로 로드됩니다. ES module, 동적 import, JSON fetch를 사용하지 않아 로컬 파일에서 모듈 또는 fetch의 출처 제한에 의존하지 않습니다. 화면용 원문도 `QURI_RULES`에 포함되어 있습니다.
+여섯 JavaScript 파일은 `defer`가 붙은 classic script로 순서대로 로드됩니다. ES module, 동적 import, JSON fetch를 사용하지 않아 로컬 파일에서 모듈 또는 fetch의 출처 제한에 의존하지 않습니다. 화면용 원문도 `QURI_RULES`에 포함되어 있습니다.
 
-전역 진입점은 `QURI_RULES`, `QuriCore`, `QuriFlow`, `QuriSprite`이며 UI 코드는 즉시 실행 함수 내부에 상태를 둡니다. `core.js`와 `guided-flow.js`는 개발 검증을 위해 CommonJS로도 읽을 수 있지만, 브라우저 실행에 Node.js가 사용되지는 않습니다.
+전역 진입점은 `QURI_RULES`, `QuriCore`, `QuriFlow`, `QuriSprite`, `QuriSessionLock`이며 UI 코드는 즉시 실행 함수 내부에 상태를 둡니다. `core.js`와 `guided-flow.js`는 개발 검증을 위해 CommonJS로도 읽을 수 있지만, 브라우저 실행에 Node.js가 사용되지는 않습니다.
 
-## v1.1.0의 화면 흐름
+## v1.2.0 공개 사이트 저장 보호
+
+`#privacy` 화면에서 저장 위치·비전송 범위·접속 기록·백업·동일 출처의 한계를 설명합니다. 브라우저 제목에는 출원번호를 포함하지 않습니다. 일반 입력 폼은 자동완성과 맞춤법 검사를 비활성화하도록 요청하지만 브라우저 확장·운영체제까지 통제하지는 않습니다.
+
+`session-lock.js`는 `quri.examiner.workspace.v1.writer`라는 Web Lock을 잡은 탭만 편집하게 합니다. 읽기 전용 탭은 검색·조회·백업이 가능하며, 편집 탭 종료 후 명시적 재시도로 최신 저장본을 읽고 편집을 시작합니다. `pagehide`에서 저장 후 잠금을 놓고 BFCache 복귀 시 다시 획득합니다. API 오류는 읽기 전용으로 안내하며, API 미지원 환경은 기존 낙관적 충돌 감지로 동작합니다.
+
+모달 대기 중 저장 변경·편집권 상실을 재확인하고, 외부 저장소 삭제는 화면 내용을 유지한 채 백업을 안내합니다. 추가 정보 초안은 작업 JSON과 구별하며 저장 전의 초안은 백업에 포함되지 않습니다. `core.js`는 검증 후 쓰기 직전 원문도 다시 확인하지만, 이 비교만으로 미지원 환경의 동시 쓰기를 원자적으로 보장하지 않습니다.
+
+[입력 내용 저장·전송 검토](PRIVACY_REVIEW.md)와 [공개 운영 안내](GITHUB_PAGES.md)를 함께 유지합니다. `.nojekyll`과 상대 자원 경로를 사용하며 CI는 배포가 아닌 검증만 수행합니다.
+
+## v1.1.0부터 이어지는 화면 흐름
 
 첫 화면의 `#quick-start` 폼은 출원번호 하나를 정규화해 기존 사건을 열거나 새 사건을 만듭니다. 새 사건은 곧바로 문서 종류 선택 화면을 열고 사용자가 `notice`, `final`, `rejection`, `registration` 중 하나를 선택한 뒤 점검을 시작합니다. 모델의 기본값이 `notice`라는 이유만으로 사용자가 문서 종류를 확인한 것으로 처리하지 않습니다.
 

@@ -1,70 +1,37 @@
 {
-  "version": "1.1.0",
-  "catalogVersion": "1.0.0",
-  "baseCommit": "f310426d28493e5dabd35d0aa1740e6158e0b06c",
-  "verifiedAt": "2026-11-23T11:42:34.987403+09:00",
-  "nodeVersion": "v24.22.3",
-  "nativeTests": {
-    "total": 54,
-    "passed": 53,
+  "app": "QURI Examiner Checklist",
+  "version": "1.2.0",
+  "date": "2026-11-23",
+  "baseline": "fedcb9bb3e42c5084b57f40b28e6ca0eeaf2d526",
+  "local_node": {
+    "version": "24.22.3",
+    "tests": 79,
+    "passed": 77,
     "failed": 0,
-    "skipped": 1,
-    "command": "node --test tests/*.test.cjs",
-    "groups": {
-      "core": 21,
-      "catalogAndOffline": 7,
-      "guidedNavigation": 9,
-      "simulatedDomAppSessions": 15,
-      "spriteController": 1
-    }
+    "skipped_browser_groups": 2
   },
-  "syntaxChecked": [
-    "app.js",
-    "core.js",
-    "guided-flow.js",
-    "quri-sprite.js",
-    "rules-data.js"
-  ],
-  "htmlResources": [
-    "css/app.css",
-    "css/guided.css",
-    "js/rules-data.js",
-    "js/core.js",
-    "js/guided-flow.js",
-    "js/quri-sprite.js",
-    "js/app.js"
-  ],
-  "images": [
-    {
-      "file": "quri-v2-guide-6frames.webp",
-      "width": 1536,
-      "height": 1024,
-      "mode": "RGBA",
-      "bytes": 335482,
-      "sha256": "b47271533a4a6c3d445d865552a17cf6c6fa547dccc2ca844bb21dd946902cf8"
-    },
-    {
-      "file": "quri-v3-motion-16frames.webp",
-      "width": 1254,
-      "height": 1254,
-      "mode": "RGBA",
-      "bytes": 468350,
-      "sha256": "9d7cefccfffc8c82dca087d980e852e1bf6b948c990c9d30789b06251f1c6738"
-    },
-    {
-      "file": "review-states-6frames.webp",
-      "width": 1536,
-      "height": 1024,
-      "mode": "RGBA",
-      "bytes": 454848,
-      "sha256": "2a39312401baf68c53210b63d0428c2eb4761fc00ca666e4b74452625e12e2aa"
-    }
-  ],
-  "externalRuntimeDependencies": 0,
-  "browserIntegration": {
-    "status": "blocked",
-    "executedChecks": 0,
-    "optionalSuite": "tests/browser-flow.test.cjs",
-    "reason": "Local Chromium launch blocked by ProcessSingleton socket permission. Browser file:// navigation rejected by URL security policy. No actual rendering, browser download/print or Windows validation claimed."
-  }
+  "static_publication_gate": "passed",
+  "local_chromium": "blocked before launch: socket Operation not permitted",
+  "actual_browser_verification": {
+    "status": "passed",
+    "run_id": 45169262312,
+    "url": "https://github.com/EQAI-MOIP/Checklist/actions/runs/45169262312",
+    "commit": "fd971f273eaaa9df32abecfdb071e7a96da97525",
+    "tests": 88,
+    "passed": 88,
+    "failed": 0,
+    "skipped": 0,
+    "browser": "Chromium installed by Playwright 1.62.1",
+    "artifact_id": 14816760490,
+    "screenshots": 14,
+    "visual_review": [
+      "hosted-dashboard",
+      "hosted-checklist",
+      "hosted-keyboard-checklist-390",
+      "hosted-privacy",
+      "guided-1440",
+      "guided-1024"
+    ]
+  },
+  "private_data_used": false
 }

@@ -1,10 +1,10 @@
-/* QURI Examiner Checklist v1.1.0. Native browser APIs only. */
+/* QURI Examiner Checklist v1.2.0. Native browser APIs only. */
 (function () {
   'use strict';
-  const C = window.QuriCore, R = window.QURI_RULES, F = window.QuriFlow;
+  const C = window.QuriCore, R = window.QURI_RULES, F = window.QuriFlow, L = window.QuriSessionLock;
   const view = document.getElementById('view');
-  if (!C || !R || !F) {
-    view.innerHTML = '<section class="loading-view"><h1>앱 파일을 확인해 주세요</h1><p>압축을 모두 풀어 index.html과 js, css, assets 폴더를 같은 위치에 둔 뒤 다시 열어 주세요.</p></section>';
+  if (!C || !R || !F || !L) {
+    view.innerHTML = '<section class="loading-view"><h1>앱 파일을 불러오지 못했습니다</h1><p>사이트 이용 중이라면 인터넷 연결을 확인하고 새로고침해 주세요. 폴더로 사용 중이라면 압축을 모두 풀어 index.html과 js, css, assets 폴더를 같은 위치에 둔 뒤 다시 열어 주세요. 기존 기록은 지우지 않습니다.</p></section>';
     document.getElementById('save-state').textContent = '필수 파일 누락';
     return;
   }
@@ -38,6 +38,28 @@
   let importWorkspace=null, confirmResolver=null;
   let sprites=[];
   let activeItemId='', viewMode='guided', choosingType=false;
+  let sessionState='pending', sessionLock=null, caseFormRevision=null;
+  const writerBlocked=()=>['pending','viewer','error'].includes(sessionState);
+  const editingBlocked=()=>writerBlocked()||conflict;
+  const mutationActions=new Set(['sample','choose-type','choose-type-screen','edit-case','save-case-form','item-status','claim-status','toggle-motion','import','import-merge','import-replace','complete','reopen','archive','unarchive','delete-case']);
+  function allowEdit() {
+    if(!editingBlocked())return true;
+    notify(conflict?'저장 충돌이 있습니다. 현재 작업을 백업한 뒤 저장된 데이터를 다시 불러와 주세요.':'이 탭은 읽기 전용입니다. 다른 편집 탭을 닫고 상단에서 편집을 다시 시작해 주세요.',true);
+    return false;
+  }
+  function applyEditingMode() {
+    if(!editingBlocked()){
+      $$('[data-writer-disabled]').forEach(el=>{el.disabled=false;el.removeAttribute('data-writer-disabled');});
+      const drop=$('#backup-drop');if(drop){drop.removeAttribute('aria-disabled');drop.setAttribute('tabindex','0');}
+      return;
+    }
+    const disable=el=>{if(!el.disabled){el.setAttribute('data-writer-disabled','true');el.disabled=true;}};
+    $$('input,textarea,select',view).forEach(el=>{if(!['case-search','rule-search','case-filter','type-filter'].includes(el.id))disable(el);});
+    $$('[data-action]').forEach(el=>{if(mutationActions.has(el.dataset.action))disable(el);});
+    const submit=$('#quick-start button');if(submit)disable(submit);
+    const form=$('#case-form');if(form)$$('input,textarea,select',form).forEach(disable);
+    const drop=$('#backup-drop');if(drop){drop.setAttribute('aria-disabled','true');drop.setAttribute('tabindex','-1');}
+  }
   // View positions are deliberately outside the portable v1 workspace schema.
   const CURSOR_KEY='quri.examiner.cursor.v1';
   let positions=Object.create(null);
@@ -69,6 +91,7 @@
     toastTimer=setTimeout(()=>{el.hidden=true;},error?6500:3800);
   }
   function mountSprites() {
+    applyEditingMode();
     sprites.forEach(s=>s.destroy()); sprites=[];
     if(!window.QuriSprite)return;
     QuriSprite.setPaused(workspace.settings.reduceMotion);
@@ -77,17 +100,20 @@
   }
   function saveBadge() {
     const el=$('#save-state');
-    const error=storageError||recovery||conflict;
+    const error=storageError||recovery||conflict||writerBlocked();
     el.className='save-state'+(error?' error':'');
-    el.innerHTML='<span class="status-dot '+(error?'error':dirty?'busy':'')+'"></span>'+esc(memoryOnly?'파일 백업 필요':error?'자동 저장 확인 필요':dirty?'저장 중…':workspace.revision?'이 브라우저에 저장됨':'자동 저장 준비됨');
+    el.innerHTML='<span class="status-dot '+(error?'error':dirty?'busy':'')+'"></span>'+esc(writerBlocked()?'읽기 전용':memoryOnly?'파일 백업 필요':error?'자동 저장 확인 필요':dirty?'저장 중…':workspace.revision?'이 브라우저에 저장됨':'자동 저장 준비됨');
+    el.title=workspace.revision&&!dirty&&!error?'마지막 저장: '+dateTime(workspace.updatedAt):'서버 저장 없이 현재 브라우저에 보관합니다.';
     const banner=$('#storage-banner');
     banner.hidden=!error;
-    if(error) banner.innerHTML='<strong>'+esc(memoryOnly?'파일 백업 모드로 작업하고 있습니다.':conflict?'다른 창의 변경 내용이 감지되었습니다.':recovery?'기존 저장 내용을 불러오지 못했습니다.':'자동 저장이 되지 않았습니다.')+'</strong> '+esc(memoryOnly?'브라우저 자동 저장을 사용할 수 없습니다. 현재 화면에서 편집·불러오기는 가능하며, 창을 닫기 전에 JSON 백업을 저장해야 합니다.':storageError||'현재 작업을 백업 파일로 저장해 주세요.')+' <button class="button small" data-action="backup-all">현재 작업 백업</button> <button class="button small" data-action="open-backup">복구·저장 안내</button>';
+    if(writerBlocked())banner.innerHTML='<strong>'+esc(sessionState==='pending'?'편집 가능 여부를 확인하고 있습니다.':sessionState==='viewer'?'다른 탭에서 편집 중입니다. 이 탭에서는 기록을 읽고 백업할 수 있습니다.':'편집 탭 보호 기능을 시작하지 못했습니다.')+'</strong> '+esc(sessionState==='viewer'?'중복 저장을 막기 위해 한 탭에서만 편집합니다. 다른 편집 탭을 닫은 뒤 아래 버튼을 누르세요.':'잠시 후 다시 시도해 주세요. 기존 기록은 유지됩니다.')+' <button class="button small" data-action="retry-writer">이 탭에서 편집 다시 시작</button> <button class="button small" data-action="backup-all">현재 기록 백업</button>';
+    else if(error) banner.innerHTML='<strong>'+esc(memoryOnly?'파일 백업 모드로 작업하고 있습니다.':conflict?'저장 내용이 바뀌어 편집을 잠시 멈췄습니다.':recovery?'기존 저장 내용을 불러오지 못했습니다.':'자동 저장이 되지 않았습니다.')+'</strong> '+esc(memoryOnly?'브라우저 자동 저장을 사용할 수 없습니다. 현재 화면에서 편집·불러오기는 가능하며, 창을 닫기 전에 JSON 백업을 저장해야 합니다.':storageError||'현재 작업을 백업 파일로 저장해 주세요.')+' <button class="button small" data-action="backup-all">현재 작업 백업</button> <button class="button small" data-action="reload-storage">백업 후 저장 내용 다시 불러오기</button> <button class="button small" data-action="open-backup">복구·저장 안내</button>';
+    applyEditingMode();
   }
   function persist() {
     clearTimeout(saveTimer);saveTimer=0;
     if(!dirty){saveBadge();return !storageError&&!recovery&&!conflict;}
-    if(recovery||conflict||memoryOnly){saveBadge();return false;}
+    if(recovery||conflict||memoryOnly||writerBlocked()){saveBadge();return false;}
     const result=storage.save(workspace,workspace.revision);
     if(result.ok){workspace=result.workspace;dirty=false;storageError=null;}
     else {storageError=result.error;conflict=Boolean(result.conflict);if(result.recovery){recovery=true;try{recoveryRaw=local.getItem(C.STORAGE_KEY);}catch(_){}}}
@@ -104,7 +130,7 @@
     persist();
     const previousRoute=route, previousCase=caseId;
     const parts=location.hash.replace(/^#/,'').split('/');
-    route=['dashboard','case','rules','backup','help'].includes(parts[0])?parts[0]:'dashboard';
+    route=['dashboard','case','rules','backup','help','privacy'].includes(parts[0])?parts[0]:'dashboard';
     if(route==='case') {
       caseId=parts[1]||'';
       const c=getCase();
@@ -114,7 +140,7 @@
     render();window.scrollTo({top:0,behavior:'instant'});
   }
   function savePositions() {
-    if(recovery||conflict||memoryOnly)return;
+    if(recovery||conflict||memoryOnly||writerBlocked())return;
     const current=Object.create(null);
     workspace.cases.forEach(c=>{if(positions[c.id])current[c.id]=positions[c.id];});
     positions=current;
@@ -136,6 +162,7 @@
     selectedClaim=step?.claim?step.number:1;
   }
   function startCase() {
+    if(!allowEdit())return;
     const input=$('#application-number'), error=$('#start-error');if(!input)return;
     try {
       const number=C.normalizeNumber(input.value);
@@ -209,10 +236,10 @@
     if(route==='case'&&!getCase()){route='dashboard';caseId='';categoryId='';history.replaceState(null,'','#dashboard');}
     sprites.forEach(s=>s.destroy());sprites=[];
     $$('[data-nav]').forEach(a=>{const active=a.dataset.nav===(route==='case'?'dashboard':route);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-    const labels={dashboard:'내 심사건',case:'내 심사건 / 관점별 점검',rules:'기준·규칙 사전',backup:'백업·설정',help:'사용 안내'};
+    const labels={dashboard:'내 심사건',case:'내 심사건 / 관점별 점검',rules:'기준·규칙 사전',backup:'백업·설정',help:'사용 안내',privacy:'내 기록과 저장 안내'};
     $('#breadcrumb').textContent=labels[route];
-    document.title=(route==='case'?getCase().applicationNo:labels[route])+' · 큐리 심사 체크';
-    if(route==='dashboard')renderDashboard();else if(route==='case')renderCase();else if(route==='rules')renderRules();else if(route==='backup')renderBackup();else renderHelp();
+    document.title=labels[route]+' · 큐리 심사 체크';
+    if(route==='dashboard')renderDashboard();else if(route==='case')renderCase();else if(route==='rules')renderRules();else if(route==='backup')renderBackup();else if(route==='privacy')renderPrivacy();else renderHelp();
     mountSprites();saveBadge();updateNavCount();
   }
   function metric(label,number,type){return '<div class="stat-card"><span class="label">'+label+'</span><strong>'+number+'<small>건</small></strong><span class="stat-icon">'+icon(type)+'</span></div>';}
@@ -221,14 +248,16 @@
     const done=summaries.filter(x=>fullyComplete(x.c,x.p)).length,needs=summaries.filter(x=>x.p.unresolved).length;
     const ongoing=summaries.filter(x=>!fullyComplete(x.c,x.p)&&(x.p.answered||x.p.claimAnswered)).length;
     const recent=active.filter(c=>!fullyComplete(c)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
-    view.innerHTML=`<div class="page-heading"><div><div class="eyebrow">나만의 심사 점검실</div><h1>오늘도, 한 건씩 꼼꼼하게.</h1><p>확인할 순서는 큐리가 안내할게요. 판단과 근거를 차근차근 남겨 주세요.</p></div><span class="local-badge">${icon('shield')}오프라인 사용</span></div>
+    view.innerHTML=`<div class="page-heading"><div><div class="eyebrow">나만의 심사 점검실</div><h1>오늘도, 한 건씩 꼼꼼하게.</h1><p>확인할 순서는 큐리가 안내할게요. 판단과 근거를 차근차근 남겨 주세요.</p></div><span class="local-badge">${icon('shield')}내 브라우저에 저장</span></div>
       <section class="start-hero" aria-label="새 점검 시작"><div class="start-copy"><span class="eyebrow">새로운 점검</span><h2>출원번호 하나로<br>바로 시작해요.</h2><p>이름을 입력할 필요 없이, 나의 심사건을 이어서 관리하세요.</p>
-      <form id="quick-start" novalidate><label for="application-number">출원번호</label><div class="number-entry"><input id="application-number" name="applicationNo" type="text" inputmode="numeric" maxlength="50" autocomplete="off" placeholder="10-2026-0000001" aria-describedby="number-hint start-error" required><button class="button primary" type="submit">점검 시작${icon('arrow')}</button></div><small id="number-hint">하이픈 없이 입력해도 돼요. 이미 등록한 번호는 이어서 열립니다.</small><div id="start-error" class="form-error" role="alert" hidden></div></form></div>
+      <form id="quick-start" autocomplete="off" novalidate><label for="application-number">출원번호</label><div class="number-entry"><input id="application-number" name="applicationNo" type="text" inputmode="numeric" maxlength="50" autocomplete="off" placeholder="10-2026-0000001" aria-describedby="number-hint start-error" required><button class="button primary" type="submit">점검 시작${icon('arrow')}</button></div><small id="number-hint">하이픈 없이 입력해도 돼요. 이미 등록한 번호는 이어서 열립니다.</small><div id="start-error" class="form-error" role="alert" hidden></div></form></div>
       <div class="start-character"><div class="quri-orbit"><div class="quri-sprite" data-quri="welcome"></div></div><div class="character-note">심사관님, 함께 확인해 볼까요?</div><span class="tiny muted">큐리 · 나의 점검 파트너</span></div></section>
+      <ol class="quick-guide" aria-label="점검 사용 순서"><li><strong>출원번호 입력</strong><span>점검할 문서를 골라요.</span></li><li><strong>한 항목씩 확인</strong><span>결과와 근거를 남겨요.</span></li><li><strong>남은 확인 후 백업</strong><span>누락을 마치고 JSON을 보관해요.</span></li></ol>
+      <div class="start-secondary"><button class="text-button" data-action="sample">처음이라면 연습용 심사건으로 둘러보기</button><a href="#help">사용 방법 보기</a></div>
       ${recent?`<button class="resume-strip" data-action="open-case" data-id="${esc(recent.id)}"><span class="resume-icon">${icon('clock')}</span><span><small>최근 점검 이어하기</small><strong>${esc(recent.applicationNo)}</strong></span><span class="resume-progress">${getProgress(recent).ready}/${getProgress(recent).total}개 기록 완료</span>${icon('arrow')}</button>`:''}
       <section class="stats-grid" aria-label="심사건 현황">${metric('관리 중',active.length,'folder')}${metric('점검 중',ongoing,'clock')}${metric('보완 중',needs,'alert')}${metric('점검 완료',done,'check')}</section>
       <section><div class="section-title"><h2>내 심사건 <span class="tiny muted">${workspace.cases.length}</span></h2><button class="text-button tiny" data-action="csv-all">목록 CSV 저장</button></div><div class="toolbar"><label class="search-box">${icon('search')}<input id="case-search" type="search" maxlength="500" placeholder="출원번호 또는 발명의 명칭으로 찾기" aria-label="심사건 검색" value="${esc(listQuery)}"></label><select id="case-filter" aria-label="진행 상태로 보기"><option value="active">관리 중인 심사건</option><option value="all">전체 심사건</option><option value="pending">시작 전</option><option value="progress">점검 중</option><option value="issues">보완 중</option><option value="complete">점검완료</option><option value="archived">보관함</option></select><select id="type-filter" aria-label="점검 유형으로 보기"><option value="">모든 점검 유형</option>${Object.entries(TYPE).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><div id="case-results"></div></section>
-      <div class="dashboard-foot">${icon('shield')}<div><strong>기록은 이 브라우저에 자동 저장돼요.</strong><br>작업을 마치거나 폴더·PC를 옮기기 전에는 ‘전체 백업’으로 파일도 보관해 주세요.</div></div>`;
+      <div class="dashboard-foot">${icon('shield')}<div><strong>입력 기록은 서버로 보내지 않고, 이 브라우저에 저장해요.</strong><br>작업 후에는 ‘전체 백업’으로 파일도 보관해 주세요. PC·브라우저·사이트 주소를 바꾸면 백업을 불러와 이어갈 수 있어요. <a href="#privacy">저장 안내</a></div></div>`;
     $('#case-filter').value=listFilter;$('#type-filter').value=listType;renderCaseResults();
   }
   function filteredCases(){
@@ -335,7 +364,7 @@
   }
   function responseFields(r,item,locked,claim,blocked){
     const base='data-'+(claim?'claim-field':'response-field'),id=esc(item.id),disabled=locked?'disabled':'',memoLabel=r.status==='na'?'해당하지 않는 이유':r.status==='issue'?'발견한 보완사항':'확인 메모';
-    const field=(name,label,value,area,placeholder,required)=>'<label>'+label+(required?'<span class="required">필수</span>':'')+(area?'<textarea '+(required?'aria-required="true" ':'')+base+'="'+name+'" data-id="'+id+'" maxlength="12000" placeholder="'+esc(placeholder||'')+'" '+disabled+'>'+esc(value)+'</textarea>':'<input '+(required?'aria-required="true" ':'')+base+'="'+name+'" data-id="'+id+'" maxlength="'+(name==='claims'?1000:12000)+'" value="'+esc(value)+'" placeholder="'+esc(placeholder||'')+'" '+disabled+'>')+'</label>';
+    const field=(name,label,value,area,placeholder,required)=>'<label>'+label+(required?'<span class="required">필수</span>':'')+(area?'<textarea autocomplete="off" spellcheck="false" '+(required?'aria-required="true" ':'')+base+'="'+name+'" data-id="'+id+'" maxlength="12000" placeholder="'+esc(placeholder||'')+'" '+disabled+'>'+esc(value)+'</textarea>':'<input autocomplete="off" spellcheck="false" '+(required?'aria-required="true" ':'')+base+'="'+name+'" data-id="'+id+'" maxlength="'+(name==='claims'?1000:12000)+'" value="'+esc(value)+'" placeholder="'+esc(placeholder||'')+'" '+disabled+'>')+'</label>';
     if(r.status==='pending')return '<div class="response-feedback" data-feedback="'+id+'">'+feedbackMarkup(blocked,r)+'</div>';
     return '<div class="result-prompt"><span class="mini-step">2</span>근거와 판단을 기록해 주세요</div>'+(r.status!=='na'?'<div class="field-row">'+field('evidence','확인한 근거 · 문서 / 쪽',r.evidence,false,item.evidenceHint||'예: 보정서 3쪽, 청구항 1',r.status==='issue'||!claim&&item.critical&&workspace.settings.strictEvidence)+field('claims','관련 청구항',r.claims,false,claim?'예: 1, 2, 3':'예: 1~3, 5',false)+'</div>':'')+field('memo',memoLabel,r.memo,true,r.status==='na'?'이 출원에 적용하지 않는 이유를 적어 주세요.':r.status==='issue'?'무엇이 보완되어야 하는지 구체적으로 기록해 주세요.':'검토 내용이나 판단 이유를 적어 주세요.',r.status==='issue'||r.status==='na')+(r.status==='issue'?field('action','보완 조치 · 처리 결과',r.action,true,'보완한 내용과 재확인 결과를 적어 주세요.',true)+'<label class="checkbox-line"><input type="checkbox" '+base+'="resolved" data-id="'+id+'" '+(r.resolved?'checked':'')+' '+disabled+'>보완사항을 처리하고 다시 확인했습니다.</label>':'')+'<div class="response-feedback" data-feedback="'+id+'">'+feedbackMarkup(blocked,r)+'</div>';
   }
@@ -392,7 +421,7 @@
   }
   function renderNotes(c,host){
     const locked=Boolean(c.completedAt)||c.archived;
-    host.innerHTML='<div class="checklist-header"><div class="eyebrow">REVIEW NOTES</div><h2>종합 메모·이력</h2><p>문서 버전, 검토 범위, 쟁점과 남겨 둘 판단 이유를 기록해 주세요.</p></div><div class="panel panel-pad"><label for="case-notes" class="tiny muted">이 심사건의 종합 기록</label><textarea id="case-notes" class="notes-area" maxlength="40000" placeholder="예: 검토 문서 목록과 버전 / 최종 청구범위 / 핵심 쟁점 / 후속 조치" '+(locked?'disabled':'')+'>'+esc(c.notes)+'</textarea><div class="tiny muted">입력 내용은 자동 저장됩니다. 문서 원본은 포함되지 않으므로 파일명과 쪽을 구체적으로 남겨 주세요.</div></div><section class="panel panel-pad" style="margin-top:16px"><h3>주요 변경 이력</h3><div class="event-list">'+(c.events.length?c.events.slice(-50).reverse().map(e=>'<div class="event"><time>'+dateTime(e.at)+'</time>'+esc(e.message)+'</div>').join(''):'<p class="tiny muted">아직 기록된 변경 이력이 없습니다.</p>')+'</div></section>';
+    host.innerHTML='<div class="checklist-header"><div class="eyebrow">REVIEW NOTES</div><h2>종합 메모·이력</h2><p>문서 버전, 검토 범위, 쟁점과 남겨 둘 판단 이유를 기록해 주세요.</p></div><div class="panel panel-pad"><label for="case-notes" class="tiny muted">이 심사건의 종합 기록</label><textarea autocomplete="off" spellcheck="false" id="case-notes" class="notes-area" maxlength="40000" placeholder="예: 검토 문서 목록과 버전 / 최종 청구범위 / 핵심 쟁점 / 후속 조치" '+(locked?'disabled':'')+'>'+esc(c.notes)+'</textarea><div class="tiny muted">입력 내용은 자동 저장됩니다. 문서 원본은 포함되지 않으므로 파일명과 쪽을 구체적으로 남겨 주세요.</div></div><section class="panel panel-pad" style="margin-top:16px"><h3>주요 변경 이력</h3><div class="event-list">'+(c.events.length?c.events.slice(-50).reverse().map(e=>'<div class="event"><time>'+dateTime(e.at)+'</time>'+esc(e.message)+'</div>').join(''):'<p class="tiny muted">아직 기록된 변경 이력이 없습니다.</p>')+'</div></section>';
   }
   function renderRules(){
     view.innerHTML='<div class="page-heading"><div><div class="eyebrow">REFERENCE DESK</div><h1>기준·규칙 사전</h1><p>내장된 점검 기준과 진단코드의 원문을 확인하세요.</p></div><span class="tag purple">'+esc(R.version)+'</span></div><div class="info-box">체크 질문은 자기 점검을 돕기 위해 재구성한 안내입니다. 진단코드는 참고 후보이며 자동 부여되지 않습니다. 상세 조건은 원문을 함께 확인해 주세요.</div><div class="rule-tabs">'+[['checklist','관점별 체크 기준'],['codes','진단코드'],['sources','원문·출처']].map(([key,label])=>'<button class="button small '+(ruleTab===key?'primary':'')+'" data-action="rule-tab" data-tab="'+key+'">'+label+'</button>').join('')+'</div><div class="toolbar"><label class="search-box">'+icon('search')+'<input id="rule-search" type="search" aria-label="기준과 코드 검색" maxlength="500" placeholder="기준, 확인 방법, 코드로 검색" value="'+esc(ruleQuery)+'"></label></div><div id="rule-results"></div>';
@@ -412,9 +441,20 @@
     }
     if(!host.children.length)host.innerHTML='<div class="panel empty-state"><h3>검색 결과가 없습니다</h3><p>다른 단어나 진단코드로 검색해 주세요.</p></div>';
   }
+  function renderPrivacy(){
+    const hosted=location.protocol!=='file:';
+    const status=writerBlocked()?'읽기 전용 · 다른 탭의 편집 종료 후 다시 시작':memoryOnly?'파일 백업 모드 · 창을 닫기 전에 JSON 저장 필요':storageError||recovery||conflict?'자동 저장 확인 필요 · 상단 안내 확인':dirty?'변경 내용 저장 중':workspace.revision?'이 브라우저에 저장됨':'첫 기록부터 이 브라우저에 자동 저장';
+    view.innerHTML=`<div class="page-heading"><div><div class="eyebrow">내 기록을 이해하고 안전하게 관리하기</div><h1>내 기록은 어디에 남나요?</h1><p>이 앱의 저장 방식과 심사관님이 직접 관리할 부분을 안내합니다.</p></div></div>
+      <section class="privacy-hero"><div>${icon('shield')}<h2>입력 내용은 서버로 보내지 않습니다.</h2><p>출원번호, 체크 결과, 근거, 메모는 <strong>이 기기의 현재 브라우저</strong>에서 처리합니다. 이 앱에는 해당 내용을 사이트 서버·GitHub·AI 서비스에 올리거나 다른 사용자와 동기화하는 기능이 없습니다.</p></div></section>
+      <div class="privacy-grid"><section class="panel privacy-card"><h2>이 기기에 저장하는 내용</h2><dl class="privacy-facts"><dt>점검 기록</dt><dd>출원번호, 추가 정보, 체크 결과, 근거·메모, 보완 조치, 변경 이력</dd><dt>편의 설정</dt><dd>마지막 점검 위치, 애니메이션·근거 입력 설정</dd><dt>현재 상태</dt><dd id="privacy-storage-status">${esc(status)}</dd><dt>저장 위치</dt><dd class="storage-location">${hosted?'현재 사이트 주소의 브라우저 저장 공간':'현재 앱 파일 주소의 브라우저 저장 공간'}<br>자동 저장은 브라우저 내부에 이루어집니다. 앱 폴더에 기록 파일이 자동으로 만들어지지는 않습니다.</dd></dl><a class="privacy-link" href="#backup">백업·저장 상태 확인</a></section>
+      <section class="panel privacy-card"><h2>서버 전송 없이 사용하는 기능</h2><p>출원번호로 시작하기, 점검 기록하기, 검색, 백업 불러오기는 모두 브라우저 안에서 처리합니다. 백업을 불러오는 것도 서버 업로드가 아닙니다.</p><p>광고·방문 분석 도구, 외부 글꼴, CDN, AI 호출을 사용하지 않습니다. 연결 요청과 폼 전송을 차단하는 보안 정책도 적용했습니다.</p><p>JSON·CSV는 심사관님이 선택한 다운로드 위치에 저장합니다. 인쇄·PDF는 브라우저의 인쇄 기능을 사용합니다.</p></section></div>
+      <section class="panel privacy-card"><h2>알고 계시면 더 안전해요</h2><dl class="privacy-facts"><dt>웹 접속 기록</dt><dd>웹사이트를 열면 화면·프로그램·이미지 파일을 GitHub에서 받습니다. GitHub Pages는 보안을 위해 접속 IP를 기록할 수 있습니다. 이는 이 앱이 출원번호나 체크 내용을 서버에 보내는 것과는 별개입니다. <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection" target="_blank" rel="noopener noreferrer">GitHub의 접속 기록 안내</a></dd><dt>PC·브라우저 변경</dt><dd>다른 PC, 브라우저, 프로필이나 다른 사이트 주소에서는 기록이 자동으로 이어지지 않습니다. 기존 환경에서 JSON 백업을 저장한 뒤 새 환경에서 불러오세요.</dd><dt>기록이 사라질 수 있는 경우</dt><dd>브라우저의 사이트 데이터를 지우거나 시크릿·게스트 창을 닫으면 기록이 사라질 수 있습니다. 저장 공간 부족이나 브라우저 설정으로 자동 저장이 실패하면 상단에 안내합니다. 작업 후에는 백업 파일의 저장 완료도 확인해 주세요.</dd><dt>같은 컴퓨터 이용자</dt><dd>이 앱은 기록이나 백업 파일을 별도로 암호화하거나 비밀번호로 잠그지 않습니다. 같은 브라우저 프로필을 사용하는 사람은 기록을 볼 수 있으므로 개인 업무 프로필과 접근이 제한된 보관 위치를 사용하세요.</dd><dt>같은 사이트 주소의 다른 앱</dt><dd>브라우저 저장 공간은 폴더가 아닌 사이트 주소의 프로토콜·호스트·포트를 기준으로 구분됩니다. 예를 들어 eqai-moip.github.io의 다른 프로젝트 페이지도 같은 저장 공간에 접근할 수 있습니다. 운영자는 신뢰할 수 있는 앱만 같은 주소에서 제공하고, 별도 격리가 필요하면 이 앱 전용 도메인·서브도메인을 사용해야 합니다.</dd><dt>브라우저·다운로드 환경</dt><dd>확장 프로그램, 운영체제, 동기화 폴더, 브라우저의 부가 서비스는 이 앱이 통제하지 않습니다. 민감한 기록의 백업·인쇄 위치는 심사관님의 업무 환경에 맞게 선택해 주세요.</dd></dl></section>
+      <div class="privacy-note"><strong>웹사이트와 폴더 실행은 저장 공간이 다릅니다.</strong><p>웹사이트를 처음 열거나 새로고침할 때는 인터넷이 필요합니다. 전체 앱 폴더를 내려받아 index.html을 열면 오프라인에서도 사용할 수 있습니다. 어느 방식이든 기록을 옮길 때는 JSON 백업·불러오기를 사용하세요.</p></div>
+      <div class="button-row"><button class="button primary" data-action="backup-all">${icon('download')}현재 기록 JSON 백업</button><a class="button" href="#dashboard">내 심사건으로 돌아가기</a></div>`;
+  }
   function renderBackup(){
     const count=workspace.cases.length,size=new Blob([JSON.stringify(workspace)]).size;
-    view.innerHTML='<div class="page-heading"><div><div class="eyebrow">KEEP YOUR WORK SAFE</div><h1>백업·설정</h1><p>나의 기록을 파일로 보관하고, 다른 PC에서도 이어서 사용하세요.</p></div></div><div class="two-column"><div class="stack"><section class="panel content-card"><h2>작업 데이터 백업</h2><p>전체 심사건, 체크 결과, 근거·메모와 설정을 하나의 JSON 파일로 저장합니다. 백업 파일은 원문 문서를 포함하지 않습니다.</p><div class="backup-metrics"><span><strong>'+count+'</strong>관리 중인 전체 심사건</span><span><strong>'+Math.max(1,Math.ceil(size/1024))+' KB</strong>작업 데이터 크기</span></div><div class="button-row"><button class="button primary" data-action="backup-all">'+icon('download')+'전체 백업 저장</button><button class="button" data-action="csv-all">심사건 목록 CSV</button></div><div class="info-box amber">자동 저장 위치는 브라우저입니다. HTML 폴더에 자동으로 파일이 생기는 방식은 아닙니다. 백업 파일을 업무 폴더나 별도 보관 위치에 직접 저장해 주세요.</div></section><section class="panel content-card"><h2>백업 파일 불러오기</h2><p>가져오기 전에 포함된 출원 수와 중복 여부를 확인합니다. 기본 병합은 기존 출원을 유지하고 새로운 출원만 추가합니다.</p><div class="drop-zone" id="backup-drop" tabindex="0" role="button" aria-label="JSON 백업 파일 선택 또는 드래그">'+icon('upload')+'<strong>백업 JSON을 끌어 놓으세요</strong>또는 여기를 눌러 파일 선택</div><div class="button-row"><button class="button" data-action="import">'+icon('upload')+'백업 파일 선택</button></div></section>'+(recovery&&recoveryRaw!==null?'<section class="panel content-card"><h2>읽지 못한 저장 원문</h2><p>기존 데이터는 덮어쓰지 않았습니다. 원문을 파일로 남긴 다음 정상 백업을 불러와 복구할 수 있습니다.</p><div class="button-row"><button class="button" data-action="save-raw">기존 저장 원문 내려받기</button></div></section>':'')+'</div><div class="stack"><section class="panel content-card"><h2>나에게 맞는 점검실</h2><div class="settings-list"><div class="setting"><label class="checkbox-line"><input id="setting-strict" type="checkbox" '+(workspace.settings.strictEvidence?'checked':'')+'><strong>핵심 확인 항목에 근거 입력 필수</strong></label><p>기본값은 켜짐입니다. 핵심 항목의 확인완료 기록에 문서·쪽 등의 근거가 있어야 점검을 완료할 수 있습니다. 보완필요와 해당없음의 필수 기록은 항상 적용됩니다.</p></div><div class="setting"><label class="checkbox-line"><input id="setting-motion" type="checkbox" '+(workspace.settings.reduceMotion?'checked':'')+'><strong>큐리 애니메이션 멈추기</strong></label><p>편안한 정지 화면으로 안내합니다. 운영체제의 동작 줄이기 설정도 따릅니다.</p></div></div></section><section class="panel content-card"><h2>저장 상태 확인</h2><p>'+esc(storageError||'현재 브라우저의 저장 공간을 사용하고 있습니다.')+'</p><div class="info-box">동일한 앱은 한 창에서 작업하는 것이 좋습니다. 다른 창의 저장과 충돌하면 자동 저장을 중단하고 알려드립니다.</div><button class="button small" data-action="reload-storage">저장된 데이터 다시 불러오기</button></section><section class="panel content-card"><h2>앱 정보</h2><p>큐리 심사 체크 v1.1.0<br>점검 기준 '+esc(R.version)+'<br>원문 확보일 '+esc(R.sourceDate)+'<br>모든 기능은 인터넷 연결 없이 동작합니다.</p></section></div></div>';
+    view.innerHTML='<div class="page-heading"><div><div class="eyebrow">KEEP YOUR WORK SAFE</div><h1>백업·설정</h1><p>나의 기록을 파일로 보관하고, 다른 PC에서도 이어서 사용하세요.</p></div></div><div class="two-column"><div class="stack"><section class="panel content-card"><h2>작업 데이터 백업</h2><p>전체 심사건, 체크 결과, 근거·메모와 설정을 하나의 JSON 파일로 저장합니다. 백업 파일은 원문 문서를 포함하지 않습니다.</p><div class="backup-metrics"><span><strong>'+count+'</strong>관리 중인 전체 심사건</span><span><strong>'+Math.max(1,Math.ceil(size/1024))+' KB</strong>작업 데이터 크기</span></div><div class="button-row"><button class="button primary" data-action="backup-all">'+icon('download')+'전체 백업 저장</button><button class="button" data-action="csv-all">심사건 목록 CSV</button></div><div class="info-box amber">입력 내용은 서버로 보내지 않습니다. 현재 브라우저에 저장하며, PC·브라우저·사이트 주소를 바꿀 때는 JSON 백업을 옮겨 불러오세요. 백업 파일은 암호화되지 않으므로 업무용 보관 위치를 선택해 주세요. <a href="#privacy">저장 방식 자세히 보기</a></div></section><section class="panel content-card"><h2>백업 파일 불러오기</h2><p>가져오기 전에 포함된 출원 수와 중복 여부를 확인합니다. 기본 병합은 기존 출원을 유지하고 새로운 출원만 추가합니다.</p><div class="drop-zone" id="backup-drop" tabindex="0" role="button" aria-label="JSON 백업 파일 선택 또는 드래그">'+icon('upload')+'<strong>백업 JSON을 끌어 놓으세요</strong>또는 여기를 눌러 파일 선택</div><div class="button-row"><button class="button" data-action="import">'+icon('upload')+'백업 파일 선택</button></div></section>'+(recovery&&recoveryRaw!==null?'<section class="panel content-card"><h2>읽지 못한 저장 원문</h2><p>기존 데이터는 덮어쓰지 않았습니다. 원문을 파일로 남긴 다음 정상 백업을 불러와 복구할 수 있습니다.</p><div class="button-row"><button class="button" data-action="save-raw">기존 저장 원문 내려받기</button></div></section>':'')+'</div><div class="stack"><section class="panel content-card"><h2>나에게 맞는 점검실</h2><div class="settings-list"><div class="setting"><label class="checkbox-line"><input id="setting-strict" type="checkbox" '+(workspace.settings.strictEvidence?'checked':'')+'><strong>핵심 확인 항목에 근거 입력 필수</strong></label><p>기본값은 켜짐입니다. 핵심 항목의 확인완료 기록에 문서·쪽 등의 근거가 있어야 점검을 완료할 수 있습니다. 보완필요와 해당없음의 필수 기록은 항상 적용됩니다.</p></div><div class="setting"><label class="checkbox-line"><input id="setting-motion" type="checkbox" '+(workspace.settings.reduceMotion?'checked':'')+'><strong>큐리 애니메이션 멈추기</strong></label><p>편안한 정지 화면으로 안내합니다. 운영체제의 동작 줄이기 설정도 따릅니다.</p></div></div></section><section class="panel content-card"><h2>저장 상태 확인</h2><p>'+esc(storageError||'현재 브라우저의 저장 공간을 사용하고 있습니다.')+'</p><div class="info-box">지원되는 브라우저에서는 한 탭만 편집하도록 보호합니다. 그 외 환경에서는 한 창에서만 작업해 주세요. 저장 충돌이 감지되면 현재 기록을 유지하고 편집을 멈춥니다.</div><button class="button small" data-action="reload-storage">저장된 데이터 다시 불러오기</button></section><section class="panel content-card"><h2>앱 정보</h2><p>큐리 심사 체크 v1.2.0<br>점검 기준 '+esc(R.version)+'<br>원문 확보일 '+esc(R.sourceDate)+'<br>입력 내용은 서버로 전송하지 않습니다.<br>웹사이트를 여는 데는 인터넷이 필요하며, 전체 앱 폴더는 오프라인에서도 사용할 수 있습니다.</p></section></div></div>';
     const drop=$('#backup-drop');
     drop.addEventListener('click',()=>$('#backup-file').click());drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#backup-file').click();}});
     drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag-over');});drop.addEventListener('dragleave',()=>drop.classList.remove('drag-over'));drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag-over');if(e.dataTransfer.files.length!==1){notify('JSON 백업 파일을 한 개씩 가져와 주세요.',true);return;}readBackupFile(e.dataTransfer.files[0]);});
@@ -425,12 +465,12 @@
       ['02 · 확인','관점과 청구항별로 기록하기','한 화면에 한 질문을 보고 결과와 근거를 기록합니다. 기록하고 다음으로 이어가고, 지금 확인하기 어려우면 나중에 확인을 선택하세요. 해당 항목은 최종확인에 계속 남습니다.'],
       ['03 · 마무리','누락 확인과 백업 저장','보완·최종확인에서 남은 항목으로 바로 이동합니다. 점검을 완료한 뒤 보고서와 JSON 백업을 저장합니다.']
     ].map(([n,t,d])=>'<section class="panel help-step"><div class="step-number">'+n+'</div><h3>'+t+'</h3><p>'+d+'</p></section>').join('')+'</div><h2 style="margin:30px 0 16px;font-size:18px">자주 묻는 질문</h2>'+[
-      ['인터넷이 끊겨 있어도 사용할 수 있나요?','네. ZIP을 모두 풀고 index.html을 브라우저에서 열면 됩니다. 별도 설치, 실행 서버, API 키, 외부 글꼴, CDN이 필요하지 않습니다. 큐리 스프라이트와 규칙 원문도 폴더에 들어 있습니다.'],
-      ['내 기록은 어디에 저장되나요?','현재 브라우저의 로컬 저장 공간에 자동 저장됩니다. HTML 파일이나 ZIP 내부에 자동으로 저장되지는 않습니다. 주소나 폴더 위치, 브라우저 프로필이 바뀌거나 사이트 데이터를 지우면 기존 기록이 보이지 않을 수 있으므로 전체 백업 JSON을 별도로 보관해 주세요.'],
+      ['인터넷이 끊겨 있어도 사용할 수 있나요?','웹사이트를 처음 열거나 새로고침할 때는 인터넷이 필요합니다. 인터넷 없는 환경에서는 전체 앱 폴더의 압축을 풀고 index.html을 브라우저에서 열어 주세요. 별도 설치, 실행 서버, API 키, 외부 글꼴, CDN이 필요하지 않습니다. 두 실행 방식의 기록은 JSON 백업으로 옮길 수 있습니다.'],
+      ['내 기록은 어디에 저장되나요?','출원번호와 체크·근거·메모는 현재 브라우저의 로컬 저장 공간에 자동 저장됩니다. 이 앱은 입력 내용을 서버로 전송하지 않습니다. HTML 파일이나 ZIP 내부에 자동으로 저장되지는 않습니다. 주소나 폴더 위치, 브라우저 프로필이 바뀌거나 사이트 데이터를 지우면 기존 기록이 보이지 않을 수 있으므로 전체 백업 JSON을 별도로 보관해 주세요.'],
       ['완료 버튼이 진행되지 않아요.','보완·최종확인 목록에서 미확인, 근거 누락, 해당없음 사유, 미처리 보완사항을 확인하세요. 보완필요에는 발견 내용·근거·조치와 보완 완료 표시가 필요합니다. 마지막에 직접 확인했다는 체크를 해야 점검이 완료됩니다.'],
       ['청구항이 삭제되었거나 번호가 비어 있으면요?','추가 정보에 마지막 청구항 번호를 입력한 뒤, 삭제된 번호는 청구항별 점검에서 해당없음을 선택하고 삭제 사유·문서 버전을 남겨 주세요. 청구항 수를 줄이더라도 기존 기록은 보존되어 다시 늘리면 나타납니다.'],
       ['점검 유형을 변경하면 기록은 어떻게 되나요?','유형에 따라 적용되는 항목만 표시됩니다. 다른 유형에서 작성한 항목도 데이터에는 보존됩니다. 점검을 완료한 심사건은 점검 재개 후 변경할 수 있습니다. 같은 출원번호를 중복 등록하는 대신 유형과 메모를 갱신합니다.'],
-      ['이 앱이 AI로 문서를 읽고 판단하나요?','이 버전은 심사관이 직접 확인하는 오프라인 체크리스트입니다. 큐리는 입력 상태에 따라 안내하며, LLM 호출이나 자동 문서 판독은 하지 않습니다. PDF·HWPX 원본은 업무 프로그램으로 확인하고 문서명·쪽·청구항을 근거로 기록하세요.'],
+      ['이 앱이 AI로 문서를 읽고 판단하나요?','이 버전은 심사관이 직접 확인하는 체크리스트입니다. 큐리는 입력 상태에 따라 안내하며, LLM 호출이나 자동 문서 판독은 하지 않습니다. PDF·HWPX 원본은 업무 프로그램으로 확인하고 문서명·쪽·청구항을 근거로 기록하세요.'],
       ['진단기준은 어디에서 왔나요?','EQAI_sheet의 관점 구조와 AI_Reviewer의 진단코드·통지서·결정서·등록청구항 규칙을 참조했습니다. 앱의 체크 질문은 자기 점검용으로 재구성한 것입니다. 기준·규칙 사전에서 내장 원문과 확보한 커밋을 확인할 수 있으며 오프라인에서는 자동 갱신되지 않습니다.'],
       ['새 PC로 옮기거나 기록을 복원하려면요?','전체 백업 JSON과 앱 폴더를 함께 옮기세요. 새 PC에서 index.html을 열고 백업·설정의 불러오기를 사용합니다. 병합은 동일 출원번호를 건너뛰며, 전체 교체는 확인 후 백업 내용으로 작업 전체를 바꿉니다. 앱 ZIP만 복사해도 브라우저 기록이 따라가는 것은 아닙니다.'],
       ['보고서·CSV·JSON은 어떻게 다른가요?','보고서는 사람이 읽기 위한 인쇄 화면이며 브라우저에서 PDF로 저장할 수 있습니다. CSV는 목록이나 체크 결과를 표로 살펴보는 용도입니다. 다시 불러와 작업을 이어가려면 JSON 백업을 사용하세요.'],
@@ -441,18 +481,23 @@
     if(dialog.open)dialog.close();
     $('#dialog-content').innerHTML='<div class="dialog-head"><div><h2 id="dialog-title">'+esc(title)+'</h2>'+(subtitle?'<p>'+esc(subtitle)+'</p>':'')+'</div><button class="button subtle icon-only" data-action="close-dialog" aria-label="닫기">'+icon('close')+'</button></div><div class="dialog-body">'+body+'</div><div class="dialog-footer">'+(footer||'<button class="button" data-action="close-dialog">닫기</button>')+'</div>';
     dialog.showModal();
+    applyEditingMode();
   }
   function closeDialog(){if(dialog.open)dialog.close();if(confirmResolver){const resolve=confirmResolver;confirmResolver=null;resolve(false);}}
   function confirmAction(title,message,label,danger){return new Promise(resolve=>{openDialog(title,'', '<div class="confirm-body">'+esc(message)+'</div>','<button class="button" data-action="confirm-no">취소</button><button class="button '+(danger?'danger':'primary')+'" data-action="confirm-yes">'+esc(label||'계속하기')+'</button>');confirmResolver=resolve;});}
   function showCaseForm(edit){
     if(!edit){startInput();return;}
+    persist();if(!allowEdit())return;
     const c=getCase();if(!c)return;if(c.completedAt||c.archived){notify('점검을 재개하거나 보관을 해제한 뒤 수정해 주세요.');return;}
+    caseFormRevision=workspace.revision;
     openDialog('점검 정보','명칭·예정일·청구항 번호는 필요할 때만 추가하세요.',
-      `<form id="case-form"><div id="case-form-error" class="form-error" role="alert" hidden></div><div class="form-grid"><div class="form-field"><label for="form-number">출원번호 <span class="required">필수</span></label><input id="form-number" name="applicationNo" inputmode="numeric" maxlength="50" autocomplete="off" value="${esc(c.applicationNo)}" required></div><div class="form-field"><label for="form-type">점검할 문서</label><select id="form-type" name="type">${Object.entries(TYPE).map(([key,name])=>`<option value="${key}" ${c.type===key?'selected':''}>${name}</option>`).join('')}</select></div><div class="form-field full"><label for="form-title">발명의 명칭 <small>선택</small></label><input id="form-title" name="title" maxlength="500" placeholder="목록에서 알아보기 쉬운 이름" value="${esc(c.title)}"></div><div class="form-field"><label for="form-date">점검 예정일 <small>선택</small></label><input id="form-date" name="dueDate" type="date" value="${esc(c.dueDate)}"></div><div class="form-field"><label for="form-claims">마지막 청구항 번호 <small>선택</small></label><input id="form-claims" name="claimCount" type="number" min="0" max="200" step="1" value="${c.claimCount}"><small>0이면 개별 표를 만들지 않습니다. 최대 200. 삭제된 번호는 해당없음으로 기록하세요.</small></div></div></form>`,
+      `<form id="case-form" autocomplete="off"><div id="case-form-error" class="form-error" role="alert" hidden></div><div class="form-grid"><div class="form-field"><label for="form-number">출원번호 <span class="required">필수</span></label><input id="form-number" name="applicationNo" inputmode="numeric" maxlength="50" autocomplete="off" value="${esc(c.applicationNo)}" required></div><div class="form-field"><label for="form-type">점검할 문서</label><select id="form-type" name="type">${Object.entries(TYPE).map(([key,name])=>`<option value="${key}" ${c.type===key?'selected':''}>${name}</option>`).join('')}</select></div><div class="form-field full"><label for="form-title">발명의 명칭 <small>선택</small></label><input id="form-title" name="title" maxlength="500" placeholder="목록에서 알아보기 쉬운 이름" value="${esc(c.title)}"></div><div class="form-field"><label for="form-date">점검 예정일 <small>선택</small></label><input id="form-date" name="dueDate" type="date" value="${esc(c.dueDate)}"></div><div class="form-field"><label for="form-claims">마지막 청구항 번호 <small>선택</small></label><input id="form-claims" name="claimCount" type="number" min="0" max="200" step="1" value="${c.claimCount}"><small>0이면 개별 표를 만들지 않습니다. 최대 200. 삭제된 번호는 해당없음으로 기록하세요.</small></div></div></form>`,
       '<button class="button" data-action="close-dialog">취소</button><button class="button primary" data-action="save-case-form" data-edit="yes">변경 저장</button>');
     $('#case-form').addEventListener('submit',e=>{e.preventDefault();saveCaseForm(true);});
   }
   function saveCaseForm(edit){
+    if(!allowEdit())return;
+    if(edit&&caseFormRevision!==workspace.revision){conflict=true;storageError='기본정보를 여는 동안 저장 내용이 바뀌었습니다. 작성 중인 내용을 확인한 뒤 최신 데이터를 다시 불러와 주세요.';saveBadge();return;}
     const form=$('#case-form');if(!form||!form.reportValidity())return;
     const input=Object.fromEntries(new FormData(form).entries());
     try {
@@ -471,7 +516,7 @@
       categoryId=['claims','notes','review'].includes(categoryId)?categoryId:step?.categoryId||getProgress(getCase()).categories[0]?.id||'review';
       if(step?.claim)selectedClaim=step.number;rememberPosition();
       if(route==='case'&&location.hash==='#case/'+c.id)render();else setRoute('case/'+c.id);
-      notify(edit?'기본정보를 저장했습니다.':'심사건을 등록했습니다. 첫 관점부터 확인해 주세요.');
+      notify(storageError||memoryOnly?'입력 내용은 현재 화면에 반영했습니다. 자동 저장 상태를 확인하고 JSON 백업을 보관해 주세요.':edit?'기본정보를 저장했습니다.':'심사건을 등록했습니다. 첫 관점부터 확인해 주세요.',Boolean(storageError||memoryOnly));
     }catch(error){const el=$('#case-form-error');el.textContent=error.message;el.hidden=false;}
   }
   function sourceDialog(id){
@@ -492,12 +537,13 @@
     try{
       const target=oneCase?Object.assign({},workspace,{cases:[oneCase]}):workspace;
       download(C.encodeBackup(target),'QURI_'+(oneCase?oneCase.applicationNo+'_':'')+'backup_'+fileDate()+'.json');
-      notify('백업 파일을 내려받았습니다. 브라우저의 다운로드 위치를 확인해 주세요.');
+      notify('백업 파일 다운로드를 요청했습니다. 다운로드 목록에서 저장 완료와 보관 위치를 확인해 주세요.');
       return true;
     }catch(error){notify('백업 실패: '+error.message,true);return false;}
   }
   async function readBackupFile(file){
     if(!file)return;
+    if(!allowEdit())return;
     if(file.size>32*1024*1024){notify('32 MiB 이하의 JSON 백업 파일을 선택해 주세요.',true);return;}
     try{
       importWorkspace=C.decodeBackup(await file.text(),R);
@@ -507,10 +553,11 @@
     $('#backup-file').value='';
   }
   async function applyImport(replace){
-    if(!importWorkspace)return;const incoming=importWorkspace;
+    if(!importWorkspace||!allowEdit())return;const incoming=importWorkspace;
     if(replace){
       const answer=await confirmAction('현재 작업을 백업 내용으로 교체할까요?','현재 '+workspace.cases.length+'개 심사건 전체를 가져온 '+incoming.cases.length+'개 심사건으로 교체합니다.\n계속하면 교체 전 현재 작업 백업을 먼저 내려받습니다. 기존 원문이 손상된 경우에는 해당 원문도 함께 보관합니다.','백업 후 전체 교체',true);
       if(!answer)return;
+      if(!allowEdit())return;
       if(conflict){notify('다른 창의 저장 충돌을 먼저 해결해 주세요. 현재 작업을 백업하고 저장된 데이터를 다시 불러오면 됩니다.',true);return;}
       try{
         download(C.encodeBackup(workspace),'QURI_before_replace_'+fileDate()+'.json');
@@ -534,7 +581,7 @@
   }
   function exportCsv(c){
     const rows=c?[['출원번호','점검유형','관점','항목ID','확인질문','진단코드 참고','점검결과','근거','관련청구항','메모 또는 해당없음 사유','보완조치','보완완료'],...C.applicableItems(c,R).map(item=>{const r=c.responses[item.id]||C.blankResponse();return [c.applicationNo,TYPE[c.type],item.categoryTitle,item.id,item.question||item.title,item.codeRefs.join(', '),STATUS[r.status],r.evidence,r.claims,r.memo,r.action,r.resolved?'예':'아니요'];}),...Array.from({length:c.claimCount},(_,i)=>{const n=i+1,r=c.claimReviews[n]||C.blankResponse();return [c.applicationNo,TYPE[c.type],'청구항별 점검','claim:'+n,'청구항 '+n,'',STATUS[r.status],r.evidence,r.claims,r.memo,r.action,r.resolved?'예':'아니요'];})]:[['출원번호','발명의 명칭','점검유형','상태','관점별 기록완료','관점별 적용항목','청구항 기록완료','청구항 수','미처리 보완항목','미확인','점검예정일','최근수정','점검완료일'],...workspace.cases.map(entry=>{const p=getProgress(entry);return [entry.applicationNo,entry.title,needsTypeSelection(entry)?'문서 선택 대기':TYPE[entry.type],displayStatus(entry,p)[0],p.ready,p.total,p.claimReady,p.claimTotal,p.unresolved,p.pending+p.claimPending,entry.dueDate,entry.updatedAt,entry.completedAt||''];})];
-    download('\ufeff'+rows.map(row=>row.map(C.escapeCsv).join(',')).join('\r\n'),'QURI_'+(c?c.applicationNo+'_checklist':'case_list')+'_'+fileDate()+'.csv','text/csv;charset=utf-8');notify('CSV 파일을 내려받았습니다. 복원용 파일은 JSON 백업을 사용해 주세요.');
+    download('\ufeff'+rows.map(row=>row.map(C.escapeCsv).join(',')).join('\r\n'),'QURI_'+(c?c.applicationNo+'_checklist':'case_list')+'_'+fileDate()+'.csv','text/csv;charset=utf-8');notify('CSV 다운로드를 요청했습니다. 저장 완료를 확인해 주세요. 복원용 파일은 JSON 백업을 사용해 주세요.');
   }
   function printReport(){
     const c=getCase();if(!c)return;persist();const p=getProgress(c);
@@ -574,14 +621,27 @@
     c.completedAt=C.now();event(c,'completed','모든 필수 기록과 최종 확인을 마치고 이번 점검을 완료했습니다.');changed(c,true);renderCase();mountSprites();notify('점검을 완료했습니다. 보고서와 백업 파일로 기록을 남겨 주세요.');
   }
   async function resumeCase(){
-    const c=getCase();if(!c)return;
+    const current=getCase();if(!current)return;const id=current.id;
     if(await confirmAction('점검을 다시 시작할까요?','기존 확인 내용과 근거를 그대로 두고 수정할 수 있도록 엽니다. 완료 이력은 남습니다.','점검 재개')){
+      if(!allowEdit())return;const c=workspace.cases.find(row=>row.id===id);if(!c||c.archived||!c.completedAt)return;
       c.completedAt=null;event(c,'reopened','완료된 점검을 재개했습니다.');changed(c,true);renderCase();mountSprites();notify('점검을 재개했습니다.');
     }
   }
   function caseMenu(){const c=getCase();openDialog('심사건 관리',c.applicationNo,'<div class="stack"><button class="button" data-action="backup-case">'+icon('download')+'이 심사건 JSON 백업</button><button class="button" data-action="csv-case">'+icon('file')+'이 심사건 체크 결과 CSV</button><button class="button" data-action="'+(c.archived?'unarchive':'archive')+'">'+icon('archive')+(c.archived?'보관 해제':'보관함으로 이동')+'</button>'+(c.archived?'<button class="button danger" data-action="delete-case">백업 후 이 심사건 삭제</button>':'')+'</div>');}
-  async function archiveCase(remove){const c=getCase();if(!c)return;if(remove){c.archived=false;event(c,'unarchived','보관함에서 꺼냈습니다.');changed(c,true);closeDialog();renderCase();mountSprites();notify('보관을 해제했습니다.');}else if(await confirmAction('보관함으로 옮길까요?','점검 기록은 그대로 보존되고 관리 중인 목록에서 제외됩니다. 언제든 보관함에서 다시 꺼낼 수 있습니다.','보관함으로 이동')){c.archived=true;event(c,'archived','보관함으로 이동했습니다.');changed(c,true);renderCase();mountSprites();notify('보관함으로 이동했습니다.');}}
-  async function deleteCase(){const c=getCase();if(!c||!c.archived)return;if(await confirmAction('이 심사건을 삭제할까요?',c.applicationNo+'의 모든 점검 기록을 현재 브라우저에서 삭제합니다. 삭제 전 이 심사건의 JSON 백업을 내려받습니다.','백업 후 삭제',true)){if(!backupAll(c)){notify('백업을 만들지 못해 삭제를 중단했습니다. 기존 기록을 유지합니다.',true);return;}workspace.cases=workspace.cases.filter(x=>x.id!==c.id);changed(null,true);closeDialog();setRoute('dashboard');notify('심사건을 삭제했습니다. 내려받은 백업을 보관해 주세요.');}}
+  async function archiveCase(remove){
+    const current=getCase();if(!current||!allowEdit())return;const id=current.id;
+    if(!remove&&!await confirmAction('보관함으로 옮길까요?','점검 기록은 그대로 보존되고 관리 중인 목록에서 제외됩니다. 언제든 보관함에서 다시 꺼낼 수 있습니다.','보관함으로 이동'))return;
+    if(!allowEdit())return;const c=workspace.cases.find(row=>row.id===id);if(!c)return;
+    c.archived=!remove;event(c,remove?'unarchived':'archived',remove?'보관함에서 꺼냈습니다.':'보관함으로 이동했습니다.');changed(c,true);closeDialog();renderCase();mountSprites();notify(storageError?'변경 내용을 저장하지 못했습니다. 상단 저장 안내를 확인해 주세요.':remove?'보관을 해제했습니다.':'보관함으로 이동했습니다.',Boolean(storageError));
+  }
+  async function deleteCase(){
+    const current=getCase();if(!current||!current.archived||!allowEdit())return;const id=current.id;
+    if(!await confirmAction('삭제 전 백업 파일을 만들까요?',current.applicationNo+'의 JSON 백업 다운로드를 먼저 요청합니다. 다음 화면에서 파일의 저장 완료를 확인한 뒤 삭제할 수 있습니다.','백업 다운로드',true))return;
+    if(!allowEdit())return;let c=workspace.cases.find(row=>row.id===id);if(!c||!c.archived||!backupAll(c))return;
+    if(!await confirmAction('백업 파일의 저장 완료를 확인했나요?',c.applicationNo+'의 백업 파일이 다운로드 위치에 저장되었는지 확인해 주세요. 삭제하면 이 브라우저의 해당 점검 기록은 사라지며, JSON 백업으로만 복원할 수 있습니다.','저장 확인 · 심사건 삭제',true))return;
+    if(!allowEdit())return;c=workspace.cases.find(row=>row.id===id);if(!c||!c.archived)return;
+    workspace.cases=workspace.cases.filter(x=>x.id!==id);delete positions[id];changed(null,true);savePositions();closeDialog();setRoute('dashboard');notify(storageError?'삭제 결과가 저장되지 않았습니다. 상단 안내를 확인해 주세요.':'심사건을 삭제했습니다. 백업 파일은 별도로 보관됩니다.',Boolean(storageError));
+  }
   function createSample(){
     const number='10-2026-0000000';const exists=workspace.cases.find(c=>c.applicationNo===number);if(exists){setRoute('case/'+exists.id);return;}
     const c=C.createCase({applicationNo:number,title:'[연습용] 센서 신호를 이용한 상태 모니터링 장치',type:'notice',claimCount:3});
@@ -602,7 +662,9 @@
     const button=e.target.closest('[data-action]');if(!button||button.disabled)return;
     const action=button.dataset.action;
     try{
-      if(action==='new-case')startInput();
+      if(mutationActions.has(action)&&!allowEdit())return;
+      if(action==='retry-writer')await sessionLock.retry();
+      else if(action==='new-case')startInput();
       else if(action==='choose-type')chooseType(button.dataset.type);
       else if(action==='choose-type-screen'){const c=getCase();if(c&&!c.completedAt&&!c.archived){choosingType=true;rememberPosition();renderCase();mountSprites();}}
       else if(action==='view-mode'){viewMode=button.dataset.mode==='overview'?'overview':'guided';itemFilter='all';rememberPosition();renderChecklist();}
@@ -650,6 +712,7 @@
       else if(action==='delete-case')await deleteCase();
       else if(action==='sample')createSample();
       else if(action==='clear-filters'){listQuery='';listFilter='active';listType='';renderDashboard();mountSprites();}
+      applyEditingMode();
     }catch(error){notify('작업 중 오류가 발생했습니다. '+error.message,true);}
   });
   document.addEventListener('submit',e=>{if(e.target.id==='quick-start'){e.preventDefault();startCase();}});
@@ -662,6 +725,7 @@
     if(el.id==='case-search'){listQuery=el.value;renderCaseResults();return;}
     if(el.id==='rule-search'){ruleQuery=el.value;renderRuleResults();return;}
     if(el.id==='application-number'){el.removeAttribute('aria-invalid');const error=$('#start-error');if(error)error.hidden=true;return;}
+    if(editingBlocked())return;
     const c=getCase();
     if(el.id==='case-notes'&&c&&!c.completedAt&&!c.archived){c.notes=el.value;changed(c,false);return;}
     const claim=el.hasAttribute('data-claim-field'),field=claim?el.dataset.claimField:el.dataset.responseField;
@@ -675,21 +739,47 @@
     const el=e.target;
     if(el.id==='case-filter'){listFilter=el.value;renderCaseResults();}
     else if(el.id==='type-filter'){listType=el.value;renderCaseResults();}
+    else if(!allowEdit())return;
     else if(el.id==='setting-motion'){workspace.settings.reduceMotion=el.checked;changed(null,true);QuriSprite.setPaused(el.checked);document.body.classList.toggle('reduce-motion',el.checked);notify(el.checked?'큐리 애니메이션을 멈췄습니다.':'큐리 애니메이션을 켰습니다.');}
     else if(el.id==='setting-strict'){
       const value=el.checked;
       const yes=await confirmAction('핵심 항목의 근거 설정을 바꿀까요?',value?'핵심 항목의 확인완료에 근거가 필요해집니다. 기존 완료 기록에 근거가 없으면 재확인 필요로 표시됩니다.':'핵심 항목의 확인완료를 근거 없이 기록할 수 있습니다. 꼼꼼한 추적을 위해 근거를 남기는 것을 권장합니다. 보완필요·해당없음의 필수 기록은 유지됩니다.','설정 변경');
-      if(yes){workspace.settings.strictEvidence=value;changed(null,true);}else el.checked=workspace.settings.strictEvidence;
+      if(yes&&allowEdit()){workspace.settings.strictEvidence=value;changed(null,true);}else el.checked=workspace.settings.strictEvidence;
     }else if(el.id==='backup-file')readBackupFile(el.files[0]);
   });
   dialog.addEventListener('cancel',()=>{if(confirmResolver){const resolve=confirmResolver;confirmResolver=null;resolve(false);}});
   window.addEventListener('hashchange',readRoute);
   window.addEventListener('beforeunload',e=>{persist();if(dirty){e.preventDefault();e.returnValue='';}});
+  window.addEventListener('pagehide',()=>{persist();sessionLock.release();});
+  window.addEventListener('pageshow',e=>{if(e.persisted)sessionLock.start();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)persist();});
   window.addEventListener('storage',e=>{
-    if(e.key!==C.STORAGE_KEY||memoryOnly)return;
-    if(dirty){conflict=true;storageError='다른 창에서 저장했습니다. 현재 화면의 기록을 백업하고 최신 저장 내용을 다시 불러와 주세요.';saveBadge();}
-    else {const data=storage.load();if(!data.error){workspace=data.workspace;recovery=false;storageError=null;render();notify('다른 창에서 저장한 최신 내용을 반영했습니다.');}else{recovery=true;recoveryRaw=data.raw;storageError=data.error;saveBadge();}}
+    if((e.key!==C.STORAGE_KEY&&e.key!==null)||memoryOnly||(e.storageArea&&e.storageArea!==local))return;
+    // A removed store or an open dialog must never silently discard local work.
+    if(e.key===null||e.newValue===null||dirty||dialog.open||conflict){
+      clearTimeout(saveTimer);conflict=true;
+      if((e.key===null||e.newValue===null)&&workspace.cases.length)dirty=true;
+      storageError=e.key===null||e.newValue===null?'브라우저 저장 내용이 삭제되었습니다. 현재 화면의 기록은 유지합니다. JSON 백업을 먼저 저장한 뒤 저장된 데이터를 다시 불러와 주세요.':'다른 창에서 저장 내용이 바뀌었습니다. 현재 화면과 작성 중인 입력은 유지합니다. 작업을 백업하고 최신 저장 내용을 다시 불러와 주세요.';
+      const draftError=$('#case-form-error');if(draftError){draftError.textContent='다른 창에서 기록이 바뀌어 변경 저장을 멈췄습니다. 이 창에서 아직 저장하지 않은 추가 정보는 JSON 백업에 포함되지 않습니다. 필요한 입력을 따로 보관한 뒤 창을 닫고 최신 기록을 다시 불러와 주세요.';draftError.hidden=false;}
+      saveBadge();
+    }else {const data=storage.load();if(!data.error){workspace=data.workspace;recovery=false;recoveryRaw=null;storageError=null;restorePositionIfNeeded();render();notify('다른 창에서 저장한 최신 내용을 반영했습니다.');}else{recovery=true;recoveryRaw=data.raw;storageError=data.error;saveBadge();}}
   });
+  function restorePositionIfNeeded(){const c=getCase();if(route==='case'&&c)restorePosition(c);}
+  sessionLock=L.create({locks:window.navigator?.locks,onChange(state){
+    const previous=sessionState;sessionState=state;
+    if((state==='owner'||state==='unsupported')&&state!==previous){
+      const data=storage.load();
+      if(!dirty&&!conflict&&!dialog.open){
+        if(!data.error){workspace=data.workspace;memoryOnly=false;recovery=false;recoveryRaw=null;storageError=null;restorePositionIfNeeded();}
+        else {storageError=data.error;memoryOnly=data.raw===null;recovery=!memoryOnly;recoveryRaw=data.raw;}
+      }else if(data.error||data.workspace.revision!==workspace.revision){
+        conflict=true;storageError='다른 탭에서 기록이 바뀌었습니다. 현재 화면과 입력 중인 내용을 유지합니다. 백업 후 저장된 데이터를 다시 불러와 주세요.';
+        if(data.raw===null&&workspace.cases.length)dirty=true;
+      }
+      render();
+    }else saveBadge();
+  }});
+  sessionState=sessionLock.getState();
   saveBadge();updateNavCount();readRoute();
+  sessionLock.start();
 })();

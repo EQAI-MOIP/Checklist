@@ -268,6 +268,28 @@ test('저장소 할당량 오류는 성공으로 표시하지 않고 기존 데�
   assert.equal(memory.getItem(Core.STORAGE_KEY), original);
 });
 
+test('저장 준비 도중 달라진 원문을 발견하면 쓰기 전에 충돌을 알린다', () => {
+  const memory = memoryStorage(), store = Core.createStorage(memory);
+  const initial = store.save(makeWorkspace(), 0).workspace;
+  const newer = Core.validateWorkspace(initial);
+  newer.revision++;
+  newer.cases[0].notes = '다른 탭에서 먼저 저장한 내용';
+  const beforeRead = memory.getItem.bind(memory);
+  let reads = 0, writes = 0;
+  memory.getItem = key => {
+    if (++reads === 2) memory.map.set(key, JSON.stringify(newer));
+    return beforeRead(key);
+  };
+  memory.setItem = () => { writes++; };
+  initial.cases[0].notes = '아직 저장되지 않은 현재 입력';
+  const result = store.save(initial, initial.revision);
+  assert.equal(result.ok, false);
+  assert.equal(result.conflict, true);
+  assert.equal(writes, 0);
+  assert.equal(JSON.parse(memory.map.get(Core.STORAGE_KEY)).cases[0].notes, newer.cases[0].notes);
+  assert.equal(result.workspace.cases[0].notes, '아직 저장되지 않은 현재 입력');
+});
+
 test('손상된 저장 원문은 자동 초기화하거나 저장으로 덮어쓰지 않는다', () => {
   const memory = memoryStorage(), store = Core.createStorage(memory);
   const damaged = '{"unfinished":';
