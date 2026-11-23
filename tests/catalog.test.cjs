@@ -74,10 +74,10 @@ test('실행 HTML의 로컬 자원은 존재하며 서버·모듈·원격 자원
   for(const p of paths){assert.ok(!/^(?:https?:)?\/\//i.test(p));assert.ok(fs.existsSync(path.join(root,p)),p);}
   assert.doesNotMatch(html,/type=["']module["']/i);
   assert.match(html,/connect-src 'none'/);
-  const runtime=['app.js','core.js','quri-sprite.js'].map(f=>fs.readFileSync(path.join(root,'js',f),'utf8')).join('\n');
-  assert.doesNotMatch(runtime,/\bfetch\s*\(|new\s+XMLHttpRequest|new\s+WebSocket|sendBeacon\s*\(|\bimport\s*\(/);
-  const css=fs.readFileSync(path.join(root,'css/app.css'),'utf8');
-  assert.doesNotMatch(css,/@import|url\(["']?https?:/i);
+  const runtime=paths.filter(p=>p.endsWith('.js')).map(p=>fs.readFileSync(path.join(root,p),'utf8')).join('\n');
+  assert.doesNotMatch(runtime,/\bfetch\s*\(|new\s+(?:XMLHttpRequest|WebSocket|EventSource)|sendBeacon\s*\(|\bimport\s*\(/);
+  const css=paths.filter(p=>p.endsWith('.css')).map(p=>fs.readFileSync(path.join(root,p),'utf8')).join('\n');
+  assert.doesNotMatch(css,/@import|url\(["']?(?:https?:)?\/\//i);
   for(const p of ['assets/quri-v3-motion-16frames.webp','assets/quri-v2-guide-6frames.webp','assets/review-states-6frames.webp']){
     const bytes=fs.readFileSync(path.join(root,p));assert.equal(bytes.toString('ascii',0,4),'RIFF');assert.equal(bytes.toString('ascii',8,12),'WEBP');
   }
