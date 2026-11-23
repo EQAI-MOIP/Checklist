@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "verifiedAt": "2026-11-23T02:08:55.342358+00:00",
+  "nativeTests": {
+    "passed": 29,
+    "failed": 0,
+    "command": "node --test tests/*.test.cjs"
+  },
+  "syntaxChecked": [
+    "app.js",
+    "core.js",
+    "quri-sprite.js",
+    "rules-data.js"
+  ],
+  "htmlResources": [
+    "js/rules-data.js",
+    "js/core.js",
+    "js/quri-sprite.js",
+    "js/app.js",
+    "css/app.css"
+  ],
+  "images": [
+    {
+      "file": "quri-v2-guide-6frames.webp",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "bytes": 335482
+    },
+    {
+      "file": "quri-v3-motion-16frames.webp",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "bytes": 468350
+    },
+    {
+      "file": "review-states-6frames.webp",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "bytes": 454848
+    }
+  ],
+  "externalRuntimeDependencies": 0,
+  "browserIntegration": {
+    "status": "blocked",
+    "executedChecks": 0,
+    "reason": "Execution environment security policy prevented local Chromium launch and file URL browser access. No actual-browser pass claim."
+  }
+}

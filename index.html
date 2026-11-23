@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>큐리 심사 체크 · 나의 심사 점검실</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='19' fill='%23604dd0'/%3E%3Cpath d='M18 32l10 10 19-23' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+  <script defer src="js/rules-data.js"></script>
+  <script defer src="js/core.js"></script>
+  <script defer src="js/quri-sprite.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#view">본문으로 바로 가기</a>
+  <aside class="sidebar" aria-label="주 메뉴">
+    <a class="brand" href="#dashboard" aria-label="큐리 심사 체크 홈">
+      <span class="brand-mark" aria-hidden="true">Q<span>✓</span></span>
+      <span><strong>큐리 심사 체크</strong><small>QURI · EXAMINER'S NOTE</small></span>
+    </a>
+    <div class="workspace-label">나의 업무 공간</div>
+    <nav id="main-nav">
+      <a href="#dashboard" data-nav="dashboard"><span class="nav-symbol" aria-hidden="true">▦</span> 내 심사건 <span class="nav-count" id="nav-count">0</span></a>
+      <a href="#rules" data-nav="rules"><span class="nav-symbol" aria-hidden="true">▤</span> 기준·규칙 사전</a>
+      <a href="#backup" data-nav="backup"><span class="nav-symbol" aria-hidden="true">↥</span> 백업·설정</a>
+      <a href="#help" data-nav="help"><span class="nav-symbol" aria-hidden="true">?</span> 사용 안내</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="offline-note"><span class="status-dot"></span><strong>오프라인 업무 공간</strong><p>점검 내용은 이 브라우저에 저장됩니다.<br>백업 파일도 꼭 보관해 주세요.</p></div>
+      <div class="sidebar-footer"><span>꼼꼼한 심사, 편안한 기록</span><small>v1.0.0</small></div>
+    </div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-location"><span class="small-logo">Q</span><span id="breadcrumb">내 심사건</span></div>
+      <div class="topbar-actions"><span id="save-state" class="save-state" role="status"><span class="status-dot"></span>저장 준비 중</span><button class="button subtle small" data-action="backup-all" title="모든 심사건을 하나의 JSON 파일로 백업">전체 백업</button></div>
+    </header>
+    <div id="storage-banner" class="storage-banner" hidden></div>
+    <main id="view" tabindex="-1"><section class="loading-view"><span class="brand-mark" aria-hidden="true">Q</span><h1>점검실을 준비하고 있어요</h1><p>잠시 후에도 이 화면이라면 ZIP의 압축을 모두 풀고 index.html을 다시 열어 주세요.</p></section></main>
+  </div>
+  <dialog id="app-dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <input id="backup-file" type="file" accept=".json,application/json" hidden>
+  <div id="print-area" aria-hidden="true"></div>
+  <noscript><div class="noscript">이 앱을 사용하려면 브라우저에서 JavaScript를 허용해 주세요. 인터넷 연결은 필요하지 않습니다.</div></noscript>
+</body>
+</html>

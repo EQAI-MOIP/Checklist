@@ -1,0 +1,24 @@
+{
+  "file": "review-states-6frames.webp",
+  "width": 1536,
+  "height": 1024,
+  "columns": 3,
+  "rows": 2,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "alpha": true,
+  "frames": [
+    "archive-retrieval",
+    "claim-versions",
+    "compare-notices",
+    "finding",
+    "no-findings",
+    "missing-documents"
+  ],
+  "source": "New generated asset for AI 심사파트장, using EQAI-MOIP/Specimen inspector-hero-4frames.webp as identity reference",
+  "generationTool": "built-in image_gen",
+  "conversion": "PNG to WebP quality 94, method 6; original resolution and alpha preserved",
+  "sha256": "2a39312401baf68c53210b63d0428c2eb4761fc00ca666e4b74452625e12e2aa",
+  "prompt": "Identity-preserving premium 3D QURI inspector robot, ivory ceramic body, rounded glossy black face screen, expressive turquoise eyes, teal shoulder joints, amber bulb antenna, charcoal feet. Exactly three columns and two rows of 512px square full-body poses with transparent padding. Row 1: archive retrieval; three document versions linked in a timeline; comparison of two notices with magnifier. Row 2: calm discovery of a problem with amber exclamation; completed review holding green checkmarked paper; uncertain pose with missing document stack and question symbol. All accessories within their cell. No words, numbers, borders, watermark or cell decorations.",
+  "originalPrompt": "Use case: identity-preserve. Asset type: production transparent WebP-ready sprite atlas for a Korean patent examination review app, AI 심사파트장. Use the provided image ONLY as the exact character identity reference: a friendly intelligent small QURI robot, ivory ceramic body, rounded glossy black face screen, expressive luminous turquoise eyes, teal shoulder joints, amber bulb antenna, charcoal feet, small magnifying-glass insignia on its chest. Create a BRAND NEW six-pose atlas, exactly 3 equal columns by 2 equal rows, 1536 by 1024 or highest supported matching 3:2 resolution. Six separate equal SQUARE cells with one full-body robot each, same scale and same overall lighting. All six figures centered in their cell with at least 9% empty transparent safe padding around accessories; no figure, glow, or prop may cross a cell boundary. Reading left to right, top row: 1) carefully retrieving a white document from a neat folder archive, turquoise eyes focused; 2) explaining three small paper versions connected by a simple dotted time sequence, one hand pointing; 3) comparing two documents side by side with a magnifier, analytical friendly expression. Bottom row: 4) discovering a problem in a document with one small amber exclamation symbol, calm helpful expression, no aggressive anger; 5) calm satisfied completed review holding a document with a single green checkmark; 6) thoughtful uncertain expression with an incomplete stack of documents and one small amber question symbol, asking for missing source material. Premium polished detailed 3D CGI, tactile ceramics and metal, gentle studio lighting, crisp anti-aliased edges, genuine transparent alpha background, no cast background rectangle. No wording, numbers, logos added beyond the existing small chest insignia. No grid lines, borders, titles, watermark, gradients between cells, or decorative glows outside characters. Match identity precisely while making all 6 poses distinct and useful in a professional review app."
+}

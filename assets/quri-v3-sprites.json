@@ -1,0 +1,54 @@
+{
+  "version": "3.0.0",
+  "image": "quri-v3-motion-16frames.webp",
+  "width": 1254,
+  "height": 1254,
+  "columns": 4,
+  "rows": 4,
+  "cellWidth": 313.5,
+  "cellHeight": 313.5,
+  "hasAlpha": true,
+  "format": "webp",
+  "quality": 95,
+  "originalGeneratedSize": {
+    "width": 1254,
+    "height": 1254
+  },
+  "frames": 16,
+  "rowsByAction": {
+    "welcome": 0,
+    "point": 1,
+    "reading": 2,
+    "complete": 3
+  },
+  "frameSequence": [
+    0,
+    1,
+    2,
+    3,
+    2,
+    1
+  ],
+  "framePositionPercent": [
+    0,
+    33.333333333333336,
+    66.66666666666667,
+    100
+  ],
+  "rowPositionPercent": [
+    0,
+    33.333333333333336,
+    66.66666666666667,
+    100
+  ],
+  "timingMs": {
+    "welcome": 2800,
+    "point": 3200,
+    "reading": 3600,
+    "complete": 3000
+  },
+  "recommendedDisplaySize": "64–144 CSS px for at least 2× native cell resolution; existing 512px v2 poses remain available",
+  "reducedMotion": "Static frame 0. Hidden or off-screen animations pause. The hold state always uses a static reading pose.",
+  "provenance": "Generated using built-in image_gen, based on the supplied QURI v2 sheet. Encoded to WebP without changing image dimensions or removing alpha."
+}
+

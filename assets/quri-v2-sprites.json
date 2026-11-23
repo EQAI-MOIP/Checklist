@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "image": "quri-v2-guide-6frames.webp",
+  "width": 1536,
+  "height": 1024,
+  "columns": 3,
+  "rows": 2,
+  "cellWidth": 512,
+  "cellHeight": 512,
+  "hasAlpha": true,
+  "format": "webp",
+  "poses": {
+    "welcome": { "column": 0, "row": 0, "label": "심사관님을 반갑게 맞이하는 큐리" },
+    "upload": { "column": 1, "row": 0, "label": "서류를 받아 정리하는 큐리" },
+    "compare": { "column": 2, "row": 0, "label": "두 문서를 대조하는 큐리" },
+    "thoughtful": { "column": 0, "row": 1, "label": "확인할 근거를 신중히 살피는 큐리" },
+    "explain": { "column": 1, "row": 1, "label": "검토할 내용을 친절히 설명하는 큐리" },
+    "complete": { "column": 2, "row": 1, "label": "체크리스트를 정리한 큐리" }
+  },
+  "usage": {
+    "backgroundSize": "300% 200%",
+    "recommendedDisplaySize": "96–256 CSS px",
+    "positionColumns": ["0%", "50%", "100%"],
+    "positionRows": ["0%", "100%"],
+    "reducedMotion": "Display a static pose; never depend on animation to communicate review status."
+  }
+}
+
